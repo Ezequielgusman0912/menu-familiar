@@ -1,9 +1,10 @@
+from decimal import Decimal
 from datetime import date
 
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Dish, MealPlanEntry
+from .models import Dish, GroceryItem, GroceryItemState, MealPlanEntry
 
 
 class DishModelTests(TestCase):
@@ -13,6 +14,18 @@ class DishModelTests(TestCase):
         self.assertEqual(
             dish.ingredient_list(),
             ["Huevos", "Cebolla", "Queso", "Leche"],
+        )
+
+    def test_ingredient_entries_parse_quantities(self):
+        dish = Dish(name="Mila", ingredients="Milanesas x3\nPapas x2,5\nTomate")
+
+        self.assertEqual(
+            dish.ingredient_entries(),
+            [
+                {"name": "Milanesas", "quantity": Decimal("3")},
+                {"name": "Papas", "quantity": Decimal("2.5")},
+                {"name": "Tomate", "quantity": Decimal("1")},
+            ],
         )
 
 
@@ -32,3 +45,85 @@ class DashboardTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.content, b"ok")
+
+    def test_delete_meal_removes_entry(self):
+        dish = Dish.objects.create(name="Tarta", ingredients="Huevos")
+        entry = MealPlanEntry.objects.create(
+            date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
+        )
+
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {"action": "delete_meal", "entry_id": entry.id},
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertFalse(MealPlanEntry.objects.filter(pk=entry.id).exists())
+
+    def test_dashboard_shows_ingredient_quantity_sum(self):
+        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3\nTomate")
+        MealPlanEntry.objects.create(
+            date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
+        )
+
+        response = self.client.get(reverse("dashboard"), {"week": "2026-04-27"})
+
+        self.assertContains(response, "Papas")
+        self.assertContains(response, "x3")
+
+    def test_add_manual_grocery_item(self):
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {
+                "action": "add_grocery_item",
+                "grocery-name": "Lavandina",
+                "grocery-quantity": "2",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertTrue(
+            GroceryItem.objects.filter(
+                week_start=date(2026, 4, 27), name="Lavandina", quantity="2"
+            ).exists()
+        )
+
+    def test_toggle_planned_item_marks_checked(self):
+        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3")
+        MealPlanEntry.objects.create(
+            date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
+        )
+
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {
+                "action": "toggle_planned_item",
+                "item_name": "Papas",
+                "is_checked": "true",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertTrue(
+            GroceryItemState.objects.get(
+                week_start=date(2026, 4, 27), item_name="Papas"
+            ).is_checked
+        )
+
+    def test_toggle_manual_item_marks_checked(self):
+        item = GroceryItem.objects.create(
+            week_start=date(2026, 4, 27), name="Jabon", quantity="1"
+        )
+
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {
+                "action": "toggle_manual_item",
+                "item_id": item.id,
+                "is_checked": "true",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        item.refresh_from_db()
+        self.assertTrue(item.is_checked)

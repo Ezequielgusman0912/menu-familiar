@@ -1,5 +1,5 @@
-from collections import Counter
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib import messages
 from django.http import HttpResponse
@@ -7,20 +7,40 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import DishForm, MealPlanEntryForm
-from .models import Dish, MealPlanEntry
+from .forms import DishForm, GroceryItemForm, MealPlanEntryForm
+from .models import Dish, GroceryItem, GroceryItemState, MealPlanEntry
 
 
 def start_of_week(day):
     return day - timedelta(days=day.weekday())
 
 
-def grocery_summary(entries):
-    counter = Counter()
+def grocery_summary(entries, week_start):
+    counter = {}
     for entry in entries:
-        for ingredient in entry.dish.ingredient_list():
-            counter[ingredient] += 1
-    return sorted(counter.items(), key=lambda item: item[0].lower())
+        for ingredient in entry.dish.ingredient_entries():
+            counter.setdefault(ingredient["name"], Decimal("0"))
+            counter[ingredient["name"]] += ingredient["quantity"]
+
+    states = {
+        state.item_name: state
+        for state in GroceryItemState.objects.filter(week_start=week_start)
+    }
+    items = []
+    for name, quantity in sorted(counter.items(), key=lambda item: item[0].lower()):
+        if quantity == quantity.to_integral():
+            display_quantity = str(int(quantity))
+        else:
+            display_quantity = str(quantity.normalize()).replace(".", ",")
+        items.append(
+            {
+                "name": name,
+                "quantity": display_quantity,
+                "is_checked": states.get(name).is_checked if name in states else False,
+                "kind": "planned",
+            }
+        )
+    return items
 
 
 def dashboard(request):
@@ -38,13 +58,67 @@ def dashboard(request):
         if action == "add_dish":
             dish_form = DishForm(request.POST, prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(prefix="grocery")
             if dish_form.is_valid():
                 dish_form.save()
                 messages.success(request, "Plato guardado.")
                 return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+        elif action == "delete_meal":
+            dish_form = DishForm(prefix="dish")
+            meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(prefix="grocery")
+            entry_id = request.POST.get("entry_id")
+            deleted_count, _ = MealPlanEntry.objects.filter(pk=entry_id).delete()
+            if deleted_count:
+                messages.success(request, "Comida eliminada.")
+            else:
+                messages.error(request, "No se encontro la comida para eliminar.")
+            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+        elif action == "add_grocery_item":
+            dish_form = DishForm(prefix="dish")
+            meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(request.POST, prefix="grocery")
+            if grocery_form.is_valid():
+                grocery_item = grocery_form.save(commit=False)
+                grocery_item.week_start = week_start
+                grocery_item.save()
+                messages.success(request, "Articulo agregado a la lista.")
+                return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+        elif action == "toggle_planned_item":
+            dish_form = DishForm(prefix="dish")
+            meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(prefix="grocery")
+            item_name = request.POST.get("item_name", "").strip()
+            is_checked = request.POST.get("is_checked") == "true"
+            if item_name:
+                GroceryItemState.objects.update_or_create(
+                    week_start=week_start,
+                    item_name=item_name,
+                    defaults={"is_checked": is_checked},
+                )
+            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+        elif action == "toggle_manual_item":
+            dish_form = DishForm(prefix="dish")
+            meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(prefix="grocery")
+            item_id = request.POST.get("item_id")
+            is_checked = request.POST.get("is_checked") == "true"
+            GroceryItem.objects.filter(pk=item_id, week_start=week_start).update(
+                is_checked=is_checked
+            )
+            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+        elif action == "delete_manual_item":
+            dish_form = DishForm(prefix="dish")
+            meal_form = MealPlanEntryForm(prefix="meal")
+            grocery_form = GroceryItemForm(prefix="grocery")
+            item_id = request.POST.get("item_id")
+            GroceryItem.objects.filter(pk=item_id, week_start=week_start).delete()
+            messages.success(request, "Articulo eliminado de la lista.")
+            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
         else:
             meal_form = MealPlanEntryForm(request.POST, prefix="meal")
             dish_form = DishForm(prefix="dish")
+            grocery_form = GroceryItemForm(prefix="grocery")
             if meal_form.is_valid():
                 meal_form.save()
                 messages.success(request, "Comida agendada.")
@@ -54,6 +128,7 @@ def dashboard(request):
         meal_form = MealPlanEntryForm(
             prefix="meal", initial={"date": today, "meal_type": MealPlanEntry.LUNCH}
         )
+        grocery_form = GroceryItemForm(prefix="grocery", initial={"quantity": "1"})
 
     week_days = [week_start + timedelta(days=index) for index in range(7)]
     week_end = week_start + timedelta(days=6)
@@ -64,6 +139,8 @@ def dashboard(request):
     )
 
     entries_by_slot = {(entry.date, entry.meal_type): entry for entry in entries}
+    manual_grocery_items = GroceryItem.objects.filter(week_start=week_start)
+    grocery_items = grocery_summary(entries, week_start)
     rows = []
     for day in week_days:
         rows.append(
@@ -78,8 +155,11 @@ def dashboard(request):
         "rows": rows,
         "dish_form": dish_form,
         "meal_form": meal_form,
+        "grocery_form": grocery_form,
         "dishes": Dish.objects.all(),
-        "grocery_items": grocery_summary(entries),
+        "grocery_items": grocery_items,
+        "manual_grocery_items": manual_grocery_items,
+        "grocery_count": len(grocery_items) + manual_grocery_items.count(),
         "week_start": week_start,
         "week_end": week_end,
         "previous_week": week_start - timedelta(days=7),

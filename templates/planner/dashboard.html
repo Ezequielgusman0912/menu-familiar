@@ -53,16 +53,36 @@
                                     <td>{{ row.day|date:"l d/m" }}</td>
                                     <td>
                                         {% if row.almuerzo %}
-                                            <strong>{{ row.almuerzo.dish.name }}</strong>
-                                            {% if row.almuerzo.notes %}<span>{{ row.almuerzo.notes }}</span>{% endif %}
+                                            <div class="meal-card">
+                                                <div>
+                                                    <strong>{{ row.almuerzo.dish.name }}</strong>
+                                                    {% if row.almuerzo.notes %}<span>{{ row.almuerzo.notes }}</span>{% endif %}
+                                                </div>
+                                                <form method="post" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_meal">
+                                                    <input type="hidden" name="entry_id" value="{{ row.almuerzo.id }}">
+                                                    <button type="submit" class="danger-button">Eliminar</button>
+                                                </form>
+                                            </div>
                                         {% else %}
                                             <span class="muted">Sin cargar</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if row.cena %}
-                                            <strong>{{ row.cena.dish.name }}</strong>
-                                            {% if row.cena.notes %}<span>{{ row.cena.notes }}</span>{% endif %}
+                                            <div class="meal-card">
+                                                <div>
+                                                    <strong>{{ row.cena.dish.name }}</strong>
+                                                    {% if row.cena.notes %}<span>{{ row.cena.notes }}</span>{% endif %}
+                                                </div>
+                                                <form method="post" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="delete_meal">
+                                                    <input type="hidden" name="entry_id" value="{{ row.cena.id }}">
+                                                    <button type="submit" class="danger-button">Eliminar</button>
+                                                </form>
+                                            </div>
                                         {% else %}
                                             <span class="muted">Sin cargar</span>
                                         {% endif %}
@@ -77,18 +97,57 @@
             <section class="panel side-panel">
                 <div class="panel-header">
                     <h2>Lista del super</h2>
-                    <span>{{ grocery_items|length }} items</span>
+                    <span>{{ grocery_count }} items</span>
                 </div>
+                <p class="muted panel-copy">Usa formato como "Papas x3" para cargar cantidades.</p>
                 <ul class="grocery-list">
-                    {% for ingredient, count in grocery_items %}
+                    {% for item in grocery_items %}
                         <li>
-                            <span>{{ ingredient }}</span>
-                            <strong>x{{ count }}</strong>
+                            <form method="post" class="check-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle_planned_item">
+                                <input type="hidden" name="item_name" value="{{ item.name }}">
+                                <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
+                                <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
+                                    {% if item.is_checked %}✓{% endif %}
+                                </button>
+                            </form>
+                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
+                            <strong class="{% if item.is_checked %}checked-text{% endif %}">x{{ item.quantity }}</strong>
                         </li>
                     {% empty %}
                         <li class="muted">Todavia no hay ingredientes para esta semana.</li>
                     {% endfor %}
+                    {% for item in manual_grocery_items %}
+                        <li>
+                            <form method="post" class="check-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle_manual_item">
+                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
+                                <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
+                                    {% if item.is_checked %}✓{% endif %}
+                                </button>
+                            </form>
+                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
+                            <div class="grocery-actions">
+                                <strong class="{% if item.is_checked %}checked-text{% endif %}">x{{ item.quantity }}</strong>
+                                <form method="post" class="inline-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_manual_item">
+                                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                                    <button type="submit" class="danger-button">Quitar</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
                 </ul>
+                <form method="post" class="form-grid compact-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_grocery_item">
+                    {{ grocery_form.as_p }}
+                    <button type="submit">Agregar articulo</button>
+                </form>
             </section>
         </section>
 

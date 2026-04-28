@@ -92,6 +92,13 @@ button {
     cursor: pointer;
 }
 
+.danger-button {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent-soft);
+    padding: 0.5rem 0.75rem;
+}
+
 .layout {
     display: grid;
     grid-template-columns: 2fr 1fr;
@@ -112,6 +119,10 @@ button {
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.panel-copy {
     margin-bottom: 1rem;
 }
 
@@ -142,6 +153,18 @@ td strong {
     margin-bottom: 0.25rem;
 }
 
+.meal-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.inline-form {
+    margin: 0;
+    flex-shrink: 0;
+}
+
 .grocery-list,
 .saved-dishes ul {
     list-style: none;
@@ -153,9 +176,51 @@ td strong {
 .saved-dishes li {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 1rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--line);
+}
+
+.check-form {
+    margin: 0;
+}
+
+.checkbox-button {
+    width: 1.4rem;
+    height: 1.4rem;
+    min-width: 1.4rem;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--panel-strong);
+    color: var(--panel-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkbox-button.is-checked {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
+.checked-text {
+    text-decoration: line-through;
+    color: var(--muted);
+}
+
+.grocery-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.compact-form {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
 }
 
 .form-grid p {
