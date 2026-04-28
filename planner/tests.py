@@ -26,3 +26,9 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse("dashboard"), {"week": "2026-04-27"})
 
         self.assertContains(response, "Pasta")
+
+    def test_healthcheck_returns_ok(self):
+        response = self.client.get(reverse("healthcheck"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"ok")

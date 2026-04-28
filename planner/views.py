@@ -2,6 +2,7 @@ from collections import Counter
 from datetime import date, timedelta
 
 from django.contrib import messages
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -86,3 +87,7 @@ def dashboard(request):
         "today": today,
     }
     return render(request, "planner/dashboard.html", context)
+
+
+def healthcheck(request):
+    return HttpResponse("ok", content_type="text/plain")
