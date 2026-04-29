@@ -53,30 +53,50 @@
                     <h2>Lista editable</h2>
                     <span>{{ dishes|length }} platos</span>
                 </div>
-                <div class="dish-list">
+                <div class="dish-selector-list">
                     {% for dish in dishes %}
-                        <article class="dish-editor">
-                            <form method="post" class="form-grid">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="update_dish">
-                                <input type="hidden" name="dish_id" value="{{ dish.instance.id }}">
-                                {{ dish.form.as_p }}
-                                <div class="editor-actions">
-                                    <button type="submit">Guardar cambios</button>
-                                </div>
-                            </form>
-                            <form method="post" class="inline-form delete-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="delete_dish">
-                                <input type="hidden" name="dish_id" value="{{ dish.instance.id }}">
-                                <button type="submit" class="danger-button">Eliminar plato</button>
-                            </form>
-                        </article>
+                        <a
+                            class="dish-selector {% if selected_dish and selected_dish.id == dish.id %}is-selected{% endif %}"
+                            href="/comidas/?edit={{ dish.id }}"
+                        >
+                            {{ dish.name }}
+                        </a>
                     {% empty %}
                         <p class="muted">Todavia no cargaron platos.</p>
                     {% endfor %}
                 </div>
             </section>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <h2>Editor del plato</h2>
+                {% if selected_dish %}<span>{{ selected_dish.name }}</span>{% endif %}
+            </div>
+
+            {% if selected_dish and selected_form %}
+                <article class="dish-editor">
+                    <form method="post" class="form-grid">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_dish">
+                        <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                        {{ selected_form.as_p }}
+                        <div class="editor-actions">
+                            <button type="submit">Guardar cambios</button>
+                        </div>
+                    </form>
+                    <form method="post" class="inline-form delete-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_dish">
+                        <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                        <button type="submit" class="danger-button">Eliminar plato</button>
+                    </form>
+                </article>
+            {% else %}
+                <p class="muted">
+                    Elegi un plato de la lista para abrir el editor y cambiar nombre, ingredientes o notas.
+                </p>
+            {% endif %}
         </section>
     </main>
 </body>

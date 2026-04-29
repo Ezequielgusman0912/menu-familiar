@@ -69,7 +69,7 @@ class DashboardTests(TestCase):
         response = self.client.get(reverse("dashboard"), {"week": "2026-04-27"})
 
         self.assertContains(response, "Papas")
-        self.assertContains(response, "x3")
+        self.assertContains(response, 'value="3"')
 
     def test_add_manual_grocery_item(self):
         response = self.client.post(
@@ -175,7 +175,7 @@ class DashboardTests(TestCase):
         dish = Dish.objects.create(name="Milanesa", ingredients="Papas x2", notes="")
 
         response = self.client.post(
-            reverse("dishes"),
+            reverse("dishes") + f"?edit={dish.id}",
             {
                 "action": "update_dish",
                 "dish_id": dish.id,
@@ -185,7 +185,18 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dishes"))
+        self.assertRedirects(response, reverse("dishes") + f"?edit={dish.id}")
         dish.refresh_from_db()
         self.assertEqual(dish.name, "Milanesa napolitana")
         self.assertIn("Queso", dish.ingredients)
+
+    def test_dishes_page_shows_editor_only_for_selected_dish(self):
+        first = Dish.objects.create(name="Milanesa", ingredients="Papas x2", notes="")
+        second = Dish.objects.create(name="Pizza", ingredients="Harina x1", notes="")
+
+        response = self.client.get(reverse("dishes"), {"edit": second.id})
+
+        self.assertContains(response, 'Editor del plato')
+        self.assertContains(response, 'Pizza')
+        self.assertContains(response, f'dish-{second.id}-name')
+        self.assertNotContains(response, f'dish-{first.id}-name')

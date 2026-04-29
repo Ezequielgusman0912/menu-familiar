@@ -199,15 +199,16 @@ def dishes_page(request):
     dish_form = DishForm(prefix="dish")
     editing_dish_id = None
     invalid_edit_form = None
+    selected_dish_id = request.GET.get("edit")
 
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "add_dish":
             dish_form = DishForm(request.POST, prefix="dish")
             if dish_form.is_valid():
-                dish_form.save()
+                created_dish = dish_form.save()
                 messages.success(request, "Plato guardado.")
-                return redirect("dishes")
+                return redirect(f"{reverse('dishes')}?edit={created_dish.id}")
         elif action == "update_dish":
             dish_id = request.POST.get("dish_id")
             dish = Dish.objects.filter(pk=dish_id).first()
@@ -215,8 +216,9 @@ def dishes_page(request):
             if dish and edit_form.is_valid():
                 edit_form.save()
                 messages.success(request, "Plato actualizado.")
-                return redirect("dishes")
+                return redirect(f"{reverse('dishes')}?edit={dish.id}")
             editing_dish_id = int(dish_id) if dish_id and dish_id.isdigit() else None
+            selected_dish_id = dish_id
             invalid_edit_form = edit_form
         elif action == "delete_dish":
             dish_id = request.POST.get("dish_id")
@@ -227,16 +229,21 @@ def dishes_page(request):
                 messages.error(request, "No se encontro el plato.")
             return redirect("dishes")
 
-    dishes = []
-    for dish in Dish.objects.all():
-        form = DishForm(instance=dish, prefix=f"dish-{dish.id}")
-        if editing_dish_id == dish.id and invalid_edit_form is not None:
-            form = invalid_edit_form
-        dishes.append({"instance": dish, "form": form})
+    dishes = list(Dish.objects.all())
+    selected_dish = None
+    selected_form = None
+    if selected_dish_id and str(selected_dish_id).isdigit():
+        selected_dish = Dish.objects.filter(pk=selected_dish_id).first()
+    if selected_dish:
+        selected_form = DishForm(instance=selected_dish, prefix=f"dish-{selected_dish.id}")
+        if editing_dish_id == selected_dish.id and invalid_edit_form is not None:
+            selected_form = invalid_edit_form
 
     context = {
         "dish_form": dish_form,
         "dishes": dishes,
+        "selected_dish": selected_dish,
+        "selected_form": selected_form,
     }
     return render(request, "planner/dishes.html", context)
 
