@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comidas guardadas</title>
+    <link rel="stylesheet" href="/static/planner/style.css">
+</head>
+<body>
+    <main class="page">
+        <nav class="top-nav">
+            <a class="nav-pill" href="/">Semana</a>
+            <a class="nav-pill is-active" href="/comidas/">Comidas</a>
+        </nav>
+
+        <section class="hero hero-compact">
+            <div>
+                <p class="eyebrow">Biblioteca editable</p>
+                <h1>Comidas guardadas</h1>
+                <p class="intro">
+                    Editen nombre, ingredientes y notas de cada plato. Si una semana cambia la cantidad,
+                    despues pueden ajustar la lista del super desde la vista semanal.
+                </p>
+            </div>
+            <div class="week-nav">
+                <a href="/">Volver a la semana</a>
+            </div>
+        </section>
+
+        {% if messages %}
+            <section class="messages">
+                {% for message in messages %}
+                    <div class="message">{{ message }}</div>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <section class="layout forms-layout dishes-layout">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Nuevo plato</h2>
+                </div>
+                <form method="post" class="form-grid">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_dish">
+                    {{ dish_form.as_p }}
+                    <button type="submit">Guardar plato</button>
+                </form>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Lista editable</h2>
+                    <span>{{ dishes|length }} platos</span>
+                </div>
+                <div class="dish-list">
+                    {% for dish in dishes %}
+                        <article class="dish-editor">
+                            <form method="post" class="form-grid">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_dish">
+                                <input type="hidden" name="dish_id" value="{{ dish.instance.id }}">
+                                {{ dish.form.as_p }}
+                                <div class="editor-actions">
+                                    <button type="submit">Guardar cambios</button>
+                                </div>
+                            </form>
+                            <form method="post" class="inline-form delete-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_dish">
+                                <input type="hidden" name="dish_id" value="{{ dish.instance.id }}">
+                                <button type="submit" class="danger-button">Eliminar plato</button>
+                            </form>
+                        </article>
+                    {% empty %}
+                        <p class="muted">Todavia no cargaron platos.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

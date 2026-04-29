@@ -127,3 +127,65 @@ class DashboardTests(TestCase):
         self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
         item.refresh_from_db()
         self.assertTrue(item.is_checked)
+
+    def test_update_planned_item_quantity_creates_override(self):
+        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3")
+        MealPlanEntry.objects.create(
+            date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
+        )
+
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {
+                "action": "update_planned_item_quantity",
+                "item_name": "Papas",
+                "quantity": "2",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertEqual(
+            GroceryItemState.objects.get(
+                week_start=date(2026, 4, 27), item_name="Papas"
+            ).quantity_override,
+            "2",
+        )
+
+    def test_update_manual_item_changes_name_and_quantity(self):
+        item = GroceryItem.objects.create(
+            week_start=date(2026, 4, 27), name="Jabon", quantity="1"
+        )
+
+        response = self.client.post(
+            reverse("dashboard") + "?week=2026-04-27",
+            {
+                "action": "update_manual_item",
+                "item_id": item.id,
+                "name": "Detergente",
+                "quantity": "2",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        item.refresh_from_db()
+        self.assertEqual(item.name, "Detergente")
+        self.assertEqual(item.quantity, "2")
+
+    def test_dishes_page_updates_dish(self):
+        dish = Dish.objects.create(name="Milanesa", ingredients="Papas x2", notes="")
+
+        response = self.client.post(
+            reverse("dishes"),
+            {
+                "action": "update_dish",
+                "dish_id": dish.id,
+                f"dish-{dish.id}-name": "Milanesa napolitana",
+                f"dish-{dish.id}-ingredients": "Papas x1\nQueso x1",
+                f"dish-{dish.id}-notes": "Cambiar segun semana",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dishes"))
+        dish.refresh_from_db()
+        self.assertEqual(dish.name, "Milanesa napolitana")
+        self.assertIn("Queso", dish.ingredients)

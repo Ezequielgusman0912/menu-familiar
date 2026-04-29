@@ -37,3 +37,4 @@ class GroceryItemForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"placeholder": "Ej. Lavandina"}),
             "quantity": forms.TextInput(attrs={"placeholder": "Ej. 2 o 1 bidon"}),
         }
+

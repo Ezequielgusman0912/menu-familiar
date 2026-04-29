@@ -88,6 +88,7 @@ class GroceryItemState(models.Model):
     week_start = models.DateField()
     item_name = models.CharField(max_length=120)
     is_checked = models.BooleanField(default=False)
+    quantity_override = models.CharField(max_length=40, blank=True, default="")
 
     class Meta:
         ordering = ["item_name"]

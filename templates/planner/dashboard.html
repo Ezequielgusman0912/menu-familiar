@@ -8,13 +8,18 @@
 </head>
 <body>
     <main class="page">
+        <nav class="top-nav">
+            <a class="nav-pill is-active" href="/">Semana</a>
+            <a class="nav-pill" href="/comidas/">Comidas</a>
+        </nav>
+
         <section class="hero">
             <div>
                 <p class="eyebrow">Plan semanal familiar</p>
                 <h1>Comidas y lista del super en un solo lugar</h1>
                 <p class="intro">
-                    Carguen los platos una vez, organicen almuerzo y cena por dia,
-                    y lleven la lista del super desde el telefono.
+                    Organicen almuerzo y cena por dia, ajusten cantidades segun la semana
+                    y mantengan la lista del super desde el telefono.
                 </p>
             </div>
             <div class="week-nav">
@@ -99,7 +104,7 @@
                     <h2>Lista del super</h2>
                     <span>{{ grocery_count }} items</span>
                 </div>
-                <p class="muted panel-copy">Usa formato como "Papas x3" para cargar cantidades.</p>
+                <p class="muted panel-copy">Podes editar cantidades en esta semana sin tocar el plato original.</p>
                 <ul class="grocery-list">
                     {% for item in grocery_items %}
                         <li>
@@ -109,11 +114,24 @@
                                 <input type="hidden" name="item_name" value="{{ item.name }}">
                                 <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
                                 <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
-                                    {% if item.is_checked %}✓{% endif %}
+                                    {% if item.is_checked %}&#10003;{% endif %}
                                 </button>
                             </form>
-                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
-                            <strong class="{% if item.is_checked %}checked-text{% endif %}">x{{ item.quantity }}</strong>
+                            <div class="grocery-main">
+                                <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
+                                <form method="post" class="quantity-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_planned_item_quantity">
+                                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                                    <input
+                                        type="text"
+                                        name="quantity"
+                                        value="{{ item.quantity }}"
+                                        aria-label="Cantidad de {{ item.name }}"
+                                    >
+                                    <button type="submit" class="ghost-button">Guardar</button>
+                                </form>
+                            </div>
                         </li>
                     {% empty %}
                         <li class="muted">Todavia no hay ingredientes para esta semana.</li>
@@ -126,12 +144,29 @@
                                 <input type="hidden" name="item_id" value="{{ item.id }}">
                                 <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
                                 <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
-                                    {% if item.is_checked %}✓{% endif %}
+                                    {% if item.is_checked %}&#10003;{% endif %}
                                 </button>
                             </form>
-                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
                             <div class="grocery-actions">
-                                <strong class="{% if item.is_checked %}checked-text{% endif %}">x{{ item.quantity }}</strong>
+                                <form method="post" class="quantity-form manual-edit-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_manual_item">
+                                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value="{{ item.name }}"
+                                        class="{% if item.is_checked %}checked-text{% endif %}"
+                                        aria-label="Nombre de {{ item.name }}"
+                                    >
+                                    <input
+                                        type="text"
+                                        name="quantity"
+                                        value="{{ item.quantity }}"
+                                        aria-label="Cantidad de {{ item.name }}"
+                                    >
+                                    <button type="submit" class="ghost-button">Guardar</button>
+                                </form>
                                 <form method="post" class="inline-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="delete_manual_item">
@@ -154,19 +189,8 @@
         <section class="layout forms-layout">
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Agregar plato</h2>
-                </div>
-                <form method="post" class="form-grid">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="add_dish">
-                    {{ dish_form.as_p }}
-                    <button type="submit">Guardar plato</button>
-                </form>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
                     <h2>Planear comida</h2>
+                    <a class="inline-link" href="/comidas/">Editar comidas</a>
                 </div>
                 <form method="post" class="form-grid">
                     {% csrf_token %}
@@ -174,17 +198,17 @@
                     {{ meal_form.as_p }}
                     <button type="submit">Asignar a la semana</button>
                 </form>
+            </section>
 
-                <div class="saved-dishes">
-                    <h3>Platos guardados</h3>
-                    <ul>
-                        {% for dish in dishes %}
-                            <li>{{ dish.name }}</li>
-                        {% empty %}
-                            <li class="muted">Todavia no cargaron platos.</li>
-                        {% endfor %}
-                    </ul>
+            <section class="panel panel-highlight">
+                <div class="panel-header">
+                    <h2>Comidas guardadas</h2>
                 </div>
+                <p class="muted panel-copy">
+                    La lista completa de platos ahora vive en una pagina aparte para editar nombre,
+                    ingredientes y notas de forma mas comoda.
+                </p>
+                <a class="panel-cta" href="/comidas/">Abrir pagina de comidas</a>
             </section>
         </section>
     </main>
