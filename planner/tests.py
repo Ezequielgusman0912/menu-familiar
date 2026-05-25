@@ -226,6 +226,29 @@ class DashboardTests(TestCase):
         self.assertContains(response, f'dish-{second.id}-name')
         self.assertNotContains(response, f'dish-{first.id}-name')
 
+    def test_dishes_page_does_not_list_dishes_without_filter(self):
+        Dish.objects.create(name="Milanesa", notes="")
+
+        response = self.client.get(reverse("dishes"))
+
+        self.assertContains(response, "Usa el filtro para traer platos.")
+        self.assertNotContains(response, 'class="dish-selector')
+
+    def test_dishes_page_filters_dishes_and_items(self):
+        Dish.objects.create(name="Milanesa", notes="")
+        Dish.objects.create(name="Pizza", notes="")
+        Ingredient.objects.create(name="Papas")
+        Ingredient.objects.create(name="Tomate")
+
+        response = self.client.get(
+            reverse("dishes"), {"dish_q": "mila", "item_q": "papa"}
+        )
+
+        self.assertContains(response, "Milanesa")
+        self.assertNotContains(response, "Pizza")
+        self.assertContains(response, "Papa")
+        self.assertNotContains(response, "Tomate")
+
     def test_dishes_page_adds_item_to_dish(self):
         dish = Dish.objects.create(name="Milanesa")
         papa = Ingredient.objects.create(name="Papas")

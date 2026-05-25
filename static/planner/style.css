@@ -158,6 +158,10 @@ button {
     align-items: start;
 }
 
+.equal-panels {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
 .panel {
     padding: 1.25rem;
     backdrop-filter: blur(8px);
@@ -392,6 +396,14 @@ textarea::placeholder {
     border-radius: 999px;
     color: var(--muted);
     background: rgba(7, 17, 31, 0.56);
+    text-decoration: none;
+}
+
+.item-chip:hover,
+.item-chip.is-selected {
+    border-color: rgba(86, 180, 255, 0.45);
+    color: var(--text);
+    background: rgba(14, 35, 62, 0.82);
 }
 
 .dish-items-editor {
@@ -431,6 +443,23 @@ textarea::placeholder {
     margin-bottom: 0;
 }
 
+.filter-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+
+.inline-editor {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(7, 17, 31, 0.56);
+}
+
 .editor-actions,
 .delete-form {
     margin-top: 0.75rem;
@@ -455,7 +484,8 @@ textarea::placeholder {
     .grocery-actions,
     .quantity-form,
     .dish-item-list li,
-    .dish-item-add-form {
+    .dish-item-add-form,
+    .filter-form {
         grid-template-columns: 1fr;
         flex-wrap: wrap;
         justify-content: flex-start;

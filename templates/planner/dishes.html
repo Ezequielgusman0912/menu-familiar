@@ -18,8 +18,8 @@
                 <p class="eyebrow">Biblioteca editable</p>
                 <h1>Comidas guardadas</h1>
                 <p class="intro">
-                    Editen el plato con items reutilizables y cantidades. La lista del super suma por item,
-                    asi papa y papas dejan de quedar separados.
+                    Editen el plato con items reutilizables y cantidades. La lista del super suma
+                    por item, asi papa y papas dejan de quedar separados.
                 </p>
             </div>
             <div class="week-nav">
@@ -35,7 +35,7 @@
             </section>
         {% endif %}
 
-        <section class="layout forms-layout dishes-layout">
+        <section class="layout forms-layout dishes-layout equal-panels">
             <section class="panel">
                 <div class="panel-header">
                     <h2>Nuevo plato</h2>
@@ -50,119 +50,192 @@
 
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Items</h2>
-                    <span>{{ ingredients|length }} cargados</span>
+                    <h2>Editor del plato</h2>
+                    {% if selected_dish %}<span>{{ selected_dish.name }}</span>{% endif %}
                 </div>
-                <form method="post" class="form-grid compact-form item-create-form">
+
+                {% if selected_dish and selected_form %}
+                    <article class="dish-editor">
+                        <form method="post" class="form-grid">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_dish">
+                            <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                            {{ selected_form.as_p }}
+                            <div class="editor-actions">
+                                <button type="submit">Guardar cambios</button>
+                            </div>
+                        </form>
+
+                        <div class="dish-items-editor">
+                            <div class="panel-header inner-header">
+                                <h3>Items del plato</h3>
+                                <span>{{ selected_dish.dish_items.count }} items</span>
+                            </div>
+                            <ul class="dish-item-list">
+                                {% for dish_item in selected_dish.dish_items.all %}
+                                    <li>
+                                        <span>{{ dish_item.ingredient.name }}</span>
+                                        <form method="post" class="quantity-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="update_dish_item">
+                                            <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
+                                            <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                name="quantity"
+                                                value="{{ dish_item.quantity|stringformat:'g' }}"
+                                                aria-label="Cantidad de {{ dish_item.ingredient.name }}"
+                                            >
+                                            <button type="submit" class="ghost-button">Guardar</button>
+                                        </form>
+                                        <form method="post" class="inline-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_dish_item">
+                                            <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
+                                            <button type="submit" class="danger-button">Quitar</button>
+                                        </form>
+                                    </li>
+                                {% empty %}
+                                    <li class="muted">Este plato todavia no tiene items.</li>
+                                {% endfor %}
+                            </ul>
+
+                            <form method="get" class="filter-form">
+                                <input type="hidden" name="edit" value="{{ selected_dish.id }}">
+                                <input
+                                    type="search"
+                                    name="item_q"
+                                    value="{{ ingredient_query }}"
+                                    placeholder="Buscar item para sumar"
+                                    aria-label="Buscar item para sumar"
+                                >
+                                <button type="submit" class="ghost-button">Buscar</button>
+                            </form>
+
+                            {% if ingredient_query %}
+                                <form method="post" class="form-grid compact-form dish-item-add-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_dish_item">
+                                    <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                                    {{ dish_item_form.as_p }}
+                                    <button type="submit">Sumar item</button>
+                                </form>
+                            {% endif %}
+                        </div>
+
+                        <form method="post" class="inline-form delete-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_dish">
+                            <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                            <button type="submit" class="danger-button">Eliminar plato</button>
+                        </form>
+                    </article>
+                {% else %}
+                    <p class="muted">
+                        Filtra y elegi un plato desde el listado inferior para abrir el editor.
+                    </p>
+                {% endif %}
+            </section>
+        </section>
+
+        <section class="layout forms-layout dishes-layout equal-panels">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Items</h2>
+                    <span>{{ ingredient_count }} cargados</span>
+                </div>
+
+                <form method="post" class="form-grid item-create-form">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add_ingredient">
                     {{ ingredient_form.as_p }}
                     <button type="submit">Guardar item</button>
                 </form>
-                <div class="item-chip-list">
-                    {% for ingredient in ingredients %}
-                        <span class="item-chip">{{ ingredient.name }}</span>
-                    {% empty %}
-                        <p class="muted">Todavia no hay items cargados.</p>
-                    {% endfor %}
-                </div>
-            </section>
-        </section>
 
-        <section class="layout forms-layout dishes-layout">
+                <form method="get" class="filter-form">
+                    <input
+                        type="search"
+                        name="item_q"
+                        value="{{ ingredient_query }}"
+                        placeholder="Filtrar items"
+                        aria-label="Filtrar items"
+                    >
+                    <button type="submit" class="ghost-button">Filtrar</button>
+                </form>
+
+                {% if ingredient_query %}
+                    <div class="item-chip-list">
+                        {% for ingredient in ingredients %}
+                            <a
+                                class="item-chip {% if selected_ingredient and selected_ingredient.id == ingredient.id %}is-selected{% endif %}"
+                                href="/comidas/?edit_item={{ ingredient.id }}&item_q={{ ingredient_query|urlencode }}"
+                            >
+                                {{ ingredient.name }}
+                            </a>
+                        {% empty %}
+                            <p class="muted">Sin resultados para ese filtro.</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% if selected_ingredient and selected_ingredient_form %}
+                    <article class="inline-editor">
+                        <div class="panel-header inner-header">
+                            <h3>Editor de item</h3>
+                            <span>{{ selected_ingredient.name }}</span>
+                        </div>
+                        <form method="post" class="form-grid">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_ingredient">
+                            <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                            {{ selected_ingredient_form.as_p }}
+                            <button type="submit">Guardar cambios</button>
+                        </form>
+                        <form method="post" class="inline-form delete-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_ingredient">
+                            <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                            <button type="submit" class="danger-button">Eliminar item</button>
+                        </form>
+                    </article>
+                {% endif %}
+            </section>
+
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Lista editable</h2>
-                    <span>{{ dishes|length }} platos</span>
+                    <h2>Platos</h2>
+                    <span>{{ dish_count }} cargados</span>
                 </div>
-                <div class="dish-selector-list">
-                    {% for dish in dishes %}
-                        <a
-                            class="dish-selector {% if selected_dish and selected_dish.id == dish.id %}is-selected{% endif %}"
-                            href="/comidas/?edit={{ dish.id }}"
-                        >
-                            {{ dish.name }}
-                        </a>
-                    {% empty %}
-                        <p class="muted">Todavia no cargaron platos.</p>
-                    {% endfor %}
-                </div>
-            </section>
-        </section>
 
-        <section class="panel">
-            <div class="panel-header">
-                <h2>Editor del plato</h2>
-                {% if selected_dish %}<span>{{ selected_dish.name }}</span>{% endif %}
-            </div>
+                <form method="get" class="filter-form">
+                    <input
+                        type="search"
+                        name="dish_q"
+                        value="{{ dish_query }}"
+                        placeholder="Filtrar platos"
+                        aria-label="Filtrar platos"
+                    >
+                    <button type="submit" class="ghost-button">Filtrar</button>
+                </form>
 
-            {% if selected_dish and selected_form %}
-                <article class="dish-editor">
-                    <form method="post" class="form-grid">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="update_dish">
-                        <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
-                        {{ selected_form.as_p }}
-                        <div class="editor-actions">
-                            <button type="submit">Guardar cambios</button>
-                        </div>
-                    </form>
-
-                    <div class="dish-items-editor">
-                        <div class="panel-header inner-header">
-                            <h3>Items del plato</h3>
-                            <span>{{ selected_dish.dish_items.all|length }} items</span>
-                        </div>
-                        <ul class="dish-item-list">
-                            {% for dish_item in selected_dish.dish_items.all %}
-                                <li>
-                                    <span>{{ dish_item.ingredient.name }}</span>
-                                    <form method="post" class="quantity-form">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="update_dish_item">
-                                        <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
-                                        <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            name="quantity"
-                                            value="{{ dish_item.quantity|stringformat:'g' }}"
-                                            aria-label="Cantidad de {{ dish_item.ingredient.name }}"
-                                        >
-                                        <button type="submit" class="ghost-button">Guardar</button>
-                                    </form>
-                                    <form method="post" class="inline-form">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="action" value="delete_dish_item">
-                                        <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
-                                        <button type="submit" class="danger-button">Quitar</button>
-                                    </form>
-                                </li>
-                            {% empty %}
-                                <li class="muted">Este plato todavia no tiene items.</li>
-                            {% endfor %}
-                        </ul>
-                        <form method="post" class="form-grid compact-form dish-item-add-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="add_dish_item">
-                            <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
-                            {{ dish_item_form.as_p }}
-                            <button type="submit">Sumar item al plato</button>
-                        </form>
+                {% if dish_query %}
+                    <div class="dish-selector-list">
+                        {% for dish in dishes %}
+                            <a
+                                class="dish-selector {% if selected_dish and selected_dish.id == dish.id %}is-selected{% endif %}"
+                                href="/comidas/?edit={{ dish.id }}&dish_q={{ dish_query|urlencode }}"
+                            >
+                                {{ dish.name }}
+                            </a>
+                        {% empty %}
+                            <p class="muted">Sin resultados para ese filtro.</p>
+                        {% endfor %}
                     </div>
-
-                    <form method="post" class="inline-form delete-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="delete_dish">
-                        <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
-                        <button type="submit" class="danger-button">Eliminar plato</button>
-                    </form>
-                </article>
-            {% else %}
-                <p class="muted">
-                    Elegi un plato de la lista para abrir el editor y cambiar nombre, ingredientes o notas.
-                </p>
-            {% endif %}
+                {% else %}
+                    <p class="muted">Usa el filtro para traer platos.</p>
+                {% endif %}
+            </section>
         </section>
     </main>
 </body>
