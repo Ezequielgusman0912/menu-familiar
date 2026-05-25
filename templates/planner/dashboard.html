@@ -111,7 +111,7 @@
                             <form method="post" class="check-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="toggle_planned_item">
-                                <input type="hidden" name="item_name" value="{{ item.name }}">
+                                <input type="hidden" name="ingredient_id" value="{{ item.id }}">
                                 <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
                                 <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
                                     {% if item.is_checked %}&#10003;{% endif %}
@@ -122,7 +122,7 @@
                                 <form method="post" class="quantity-form">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="update_planned_item_quantity">
-                                    <input type="hidden" name="item_name" value="{{ item.name }}">
+                                    <input type="hidden" name="ingredient_id" value="{{ item.id }}">
                                     <input
                                         type="text"
                                         name="quantity"

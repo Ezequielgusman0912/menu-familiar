@@ -18,8 +18,8 @@
                 <p class="eyebrow">Biblioteca editable</p>
                 <h1>Comidas guardadas</h1>
                 <p class="intro">
-                    Editen nombre, ingredientes y notas de cada plato. Si una semana cambia la cantidad,
-                    despues pueden ajustar la lista del super desde la vista semanal.
+                    Editen el plato con items reutilizables y cantidades. La lista del super suma por item,
+                    asi papa y papas dejan de quedar separados.
                 </p>
             </div>
             <div class="week-nav">
@@ -48,6 +48,28 @@
                 </form>
             </section>
 
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>Items</h2>
+                    <span>{{ ingredients|length }} cargados</span>
+                </div>
+                <form method="post" class="form-grid compact-form item-create-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_ingredient">
+                    {{ ingredient_form.as_p }}
+                    <button type="submit">Guardar item</button>
+                </form>
+                <div class="item-chip-list">
+                    {% for ingredient in ingredients %}
+                        <span class="item-chip">{{ ingredient.name }}</span>
+                    {% empty %}
+                        <p class="muted">Todavia no hay items cargados.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+
+        <section class="layout forms-layout dishes-layout">
             <section class="panel">
                 <div class="panel-header">
                     <h2>Lista editable</h2>
@@ -85,6 +107,50 @@
                             <button type="submit">Guardar cambios</button>
                         </div>
                     </form>
+
+                    <div class="dish-items-editor">
+                        <div class="panel-header inner-header">
+                            <h3>Items del plato</h3>
+                            <span>{{ selected_dish.dish_items.all|length }} items</span>
+                        </div>
+                        <ul class="dish-item-list">
+                            {% for dish_item in selected_dish.dish_items.all %}
+                                <li>
+                                    <span>{{ dish_item.ingredient.name }}</span>
+                                    <form method="post" class="quantity-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="update_dish_item">
+                                        <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            name="quantity"
+                                            value="{{ dish_item.quantity|stringformat:'g' }}"
+                                            aria-label="Cantidad de {{ dish_item.ingredient.name }}"
+                                        >
+                                        <button type="submit" class="ghost-button">Guardar</button>
+                                    </form>
+                                    <form method="post" class="inline-form">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete_dish_item">
+                                        <input type="hidden" name="dish_item_id" value="{{ dish_item.id }}">
+                                        <button type="submit" class="danger-button">Quitar</button>
+                                    </form>
+                                </li>
+                            {% empty %}
+                                <li class="muted">Este plato todavia no tiene items.</li>
+                            {% endfor %}
+                        </ul>
+                        <form method="post" class="form-grid compact-form dish-item-add-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_dish_item">
+                            <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
+                            {{ dish_item_form.as_p }}
+                            <button type="submit">Sumar item al plato</button>
+                        </form>
+                    </div>
+
                     <form method="post" class="inline-form delete-form">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="delete_dish">

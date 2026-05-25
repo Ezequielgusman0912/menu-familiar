@@ -7,35 +7,44 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from .forms import DishForm, GroceryItemForm, MealPlanEntryForm
-from .models import Dish, GroceryItem, GroceryItemState, MealPlanEntry
+from .forms import DishForm, DishIngredientForm, GroceryItemForm, IngredientForm, MealPlanEntryForm
+from .models import Dish, DishIngredient, GroceryItem, GroceryItemState, Ingredient, MealPlanEntry
 
 
 def start_of_week(day):
     return day - timedelta(days=day.weekday())
 
 
+def format_quantity(quantity):
+    if quantity == quantity.to_integral():
+        return str(int(quantity))
+    return str(quantity.normalize()).replace(".", ",")
+
+
 def grocery_summary(entries, week_start):
     counter = {}
     for entry in entries:
         for ingredient in entry.dish.ingredient_entries():
-            counter.setdefault(ingredient["name"], Decimal("0"))
-            counter[ingredient["name"]] += ingredient["quantity"]
+            counter.setdefault(
+                ingredient["id"],
+                {"name": ingredient["name"], "quantity": Decimal("0")},
+            )
+            counter[ingredient["id"]]["quantity"] += ingredient["quantity"]
 
     states = {
-        state.item_name: state
+        state.ingredient_id: state
         for state in GroceryItemState.objects.filter(week_start=week_start)
+        if state.ingredient_id
     }
     items = []
-    for name, quantity in sorted(counter.items(), key=lambda item: item[0].lower()):
-        if quantity == quantity.to_integral():
-            display_quantity = str(int(quantity))
-        else:
-            display_quantity = str(quantity.normalize()).replace(".", ",")
-        state = states.get(name)
+    sorted_items = sorted(counter.items(), key=lambda item: item[1]["name"].lower())
+    for ingredient_id, item in sorted_items:
+        display_quantity = format_quantity(item["quantity"])
+        state = states.get(ingredient_id)
         items.append(
             {
-                "name": name,
+                "id": ingredient_id,
+                "name": item["name"],
                 "quantity": state.quantity_override or display_quantity if state else display_quantity,
                 "is_checked": state.is_checked if state else False,
                 "kind": "planned",
@@ -89,26 +98,28 @@ def dashboard(request):
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(prefix="grocery")
-            item_name = request.POST.get("item_name", "").strip()
+            ingredient_id = request.POST.get("ingredient_id")
             quantity = request.POST.get("quantity", "").strip()
-            if item_name and quantity:
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            if ingredient and quantity:
                 GroceryItemState.objects.update_or_create(
                     week_start=week_start,
-                    item_name=item_name,
+                    ingredient=ingredient,
                     defaults={"quantity_override": quantity},
                 )
-                messages.success(request, f"Cantidad actualizada para {item_name}.")
+                messages.success(request, f"Cantidad actualizada para {ingredient.name}.")
             return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
         elif action == "toggle_planned_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(prefix="grocery")
-            item_name = request.POST.get("item_name", "").strip()
+            ingredient_id = request.POST.get("ingredient_id")
             is_checked = request.POST.get("is_checked") == "true"
-            if item_name:
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            if ingredient:
                 state, _ = GroceryItemState.objects.get_or_create(
                     week_start=week_start,
-                    item_name=item_name,
+                    ingredient=ingredient,
                 )
                 state.is_checked = is_checked
                 state.save(update_fields=["is_checked"])
@@ -162,6 +173,7 @@ def dashboard(request):
     week_end = week_start + timedelta(days=6)
     entries = (
         MealPlanEntry.objects.select_related("dish")
+        .prefetch_related("dish__dish_items__ingredient")
         .filter(date__range=(week_start, week_end))
         .order_by("date", "meal_type")
     )
@@ -197,6 +209,8 @@ def dashboard(request):
 
 def dishes_page(request):
     dish_form = DishForm(prefix="dish")
+    ingredient_form = IngredientForm(prefix="ingredient")
+    dish_item_form = DishIngredientForm(prefix="dish-item")
     editing_dish_id = None
     invalid_edit_form = None
     selected_dish_id = request.GET.get("edit")
@@ -209,6 +223,13 @@ def dishes_page(request):
                 created_dish = dish_form.save()
                 messages.success(request, "Plato guardado.")
                 return redirect(f"{reverse('dishes')}?edit={created_dish.id}")
+        elif action == "add_ingredient":
+            ingredient_form = IngredientForm(request.POST, prefix="ingredient")
+            if ingredient_form.is_valid():
+                ingredient_form.save()
+                messages.success(request, "Item guardado.")
+                edit_query = f"?edit={selected_dish_id}" if selected_dish_id else ""
+                return redirect(f"{reverse('dishes')}{edit_query}")
         elif action == "update_dish":
             dish_id = request.POST.get("dish_id")
             dish = Dish.objects.filter(pk=dish_id).first()
@@ -228,12 +249,51 @@ def dishes_page(request):
             else:
                 messages.error(request, "No se encontro el plato.")
             return redirect("dishes")
+        elif action == "add_dish_item":
+            dish_id = request.POST.get("dish_id")
+            dish = Dish.objects.filter(pk=dish_id).first()
+            dish_item_form = DishIngredientForm(request.POST, prefix="dish-item")
+            if dish and dish_item_form.is_valid():
+                dish_item = dish_item_form.save(commit=False)
+                dish_item.dish = dish
+                existing = DishIngredient.objects.filter(
+                    dish=dish, ingredient=dish_item.ingredient
+                ).first()
+                if existing:
+                    existing.quantity += dish_item.quantity
+                    existing.save(update_fields=["quantity"])
+                else:
+                    dish_item.save()
+                messages.success(request, "Item agregado al plato.")
+                return redirect(f"{reverse('dishes')}?edit={dish.id}")
+            selected_dish_id = dish_id
+        elif action == "update_dish_item":
+            dish_item_id = request.POST.get("dish_item_id")
+            dish_item = DishIngredient.objects.select_related("dish").filter(pk=dish_item_id).first()
+            quantity = request.POST.get("quantity", "").replace(",", ".").strip()
+            if dish_item and quantity:
+                dish_item.quantity = Decimal(quantity)
+                dish_item.save(update_fields=["quantity"])
+                messages.success(request, "Cantidad actualizada.")
+                return redirect(f"{reverse('dishes')}?edit={dish_item.dish_id}")
+        elif action == "delete_dish_item":
+            dish_item_id = request.POST.get("dish_item_id")
+            dish_item = DishIngredient.objects.select_related("dish").filter(pk=dish_item_id).first()
+            if dish_item:
+                dish_id = dish_item.dish_id
+                dish_item.delete()
+                messages.success(request, "Item quitado del plato.")
+                return redirect(f"{reverse('dishes')}?edit={dish_id}")
 
-    dishes = list(Dish.objects.all())
+    dishes = list(Dish.objects.prefetch_related("dish_items__ingredient"))
     selected_dish = None
     selected_form = None
     if selected_dish_id and str(selected_dish_id).isdigit():
-        selected_dish = Dish.objects.filter(pk=selected_dish_id).first()
+        selected_dish = (
+            Dish.objects.prefetch_related("dish_items__ingredient")
+            .filter(pk=selected_dish_id)
+            .first()
+        )
     if selected_dish:
         selected_form = DishForm(instance=selected_dish, prefix=f"dish-{selected_dish.id}")
         if editing_dish_id == selected_dish.id and invalid_edit_form is not None:
@@ -241,6 +301,9 @@ def dishes_page(request):
 
     context = {
         "dish_form": dish_form,
+        "ingredient_form": ingredient_form,
+        "dish_item_form": dish_item_form,
+        "ingredients": Ingredient.objects.all(),
         "dishes": dishes,
         "selected_dish": selected_dish,
         "selected_form": selected_form,

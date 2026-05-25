@@ -376,6 +376,61 @@ textarea::placeholder {
     background: rgba(7, 17, 31, 0.72);
 }
 
+.item-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.item-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgba(7, 17, 31, 0.56);
+}
+
+.dish-items-editor {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+
+.inner-header {
+    margin-bottom: 0.75rem;
+}
+
+.dish-item-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.dish-item-list li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.dish-item-add-form {
+    display: grid;
+    grid-template-columns: minmax(12rem, 1fr) 8rem auto;
+    align-items: end;
+    gap: 0.75rem;
+}
+
+.dish-item-add-form p,
+.item-create-form p {
+    margin-bottom: 0;
+}
+
 .editor-actions,
 .delete-form {
     margin-top: 0.75rem;
@@ -398,7 +453,10 @@ textarea::placeholder {
 
     .grocery-main,
     .grocery-actions,
-    .quantity-form {
+    .quantity-form,
+    .dish-item-list li,
+    .dish-item-add-form {
+        grid-template-columns: 1fr;
         flex-wrap: wrap;
         justify-content: flex-start;
     }

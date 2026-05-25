@@ -1,14 +1,32 @@
-import re
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from django.db import models
 
 
+class Ingredient(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.name = self.normalize_name(self.name)
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def normalize_name(name):
+        clean_name = " ".join(name.strip().lower().split())
+        if len(clean_name) > 3 and clean_name.endswith("s"):
+            clean_name = clean_name[:-1]
+        return clean_name.capitalize()
+
+
 class Dish(models.Model):
     name = models.CharField(max_length=120)
-    ingredients = models.TextField(
-        help_text="Escribi un ingrediente por linea o separados por coma."
-    )
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -18,31 +36,34 @@ class Dish(models.Model):
     def __str__(self):
         return self.name
 
-    def ingredient_list(self):
-        raw = self.ingredients.replace(";", "\n")
-        raw = re.sub(r"(?<!\d),(?!\d)", "\n", raw)
-        return [item.strip() for item in raw.splitlines() if item.strip()]
-
     def ingredient_entries(self):
-        entries = []
-        for item in self.ingredient_list():
-            name, quantity = self.parse_ingredient(item)
-            entries.append({"name": name, "quantity": quantity})
-        return entries
+        return [
+            {
+                "id": dish_item.ingredient_id,
+                "name": dish_item.ingredient.name,
+                "quantity": dish_item.quantity,
+            }
+            for dish_item in self.dish_items.select_related("ingredient")
+        ]
 
-    @staticmethod
-    def parse_ingredient(item):
-        match = re.match(r"^(?P<name>.+?)\s*x\s*(?P<quantity>\d+(?:[.,]\d+)?)$", item, re.IGNORECASE)
-        if not match:
-            return item, Decimal("1")
 
-        name = match.group("name").strip()
-        raw_quantity = match.group("quantity").replace(",", ".")
-        try:
-            quantity = Decimal(raw_quantity)
-        except InvalidOperation:
-            quantity = Decimal("1")
-        return name, quantity
+class DishIngredient(models.Model):
+    dish = models.ForeignKey(Dish, on_delete=models.CASCADE, related_name="dish_items")
+    ingredient = models.ForeignKey(
+        Ingredient, on_delete=models.PROTECT, related_name="dish_items"
+    )
+    quantity = models.DecimalField(max_digits=8, decimal_places=2, default=Decimal("1"))
+
+    class Meta:
+        ordering = ["ingredient__name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["dish", "ingredient"], name="unique_ingredient_per_dish"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.dish.name} - {self.ingredient.name} x{self.quantity}"
 
 
 class MealPlanEntry(models.Model):
@@ -86,17 +107,25 @@ class GroceryItem(models.Model):
 
 class GroceryItemState(models.Model):
     week_start = models.DateField()
-    item_name = models.CharField(max_length=120)
+    ingredient = models.ForeignKey(
+        Ingredient,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="weekly_states",
+    )
+    item_name = models.CharField(max_length=120, blank=True, default="")
     is_checked = models.BooleanField(default=False)
     quantity_override = models.CharField(max_length=40, blank=True, default="")
 
     class Meta:
-        ordering = ["item_name"]
+        ordering = ["ingredient__name", "item_name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["week_start", "item_name"], name="unique_grocery_item_state"
+                fields=["week_start", "ingredient"], name="unique_grocery_item_state"
             )
         ]
 
     def __str__(self):
-        return f"{self.week_start} - {self.item_name}"
+        name = self.ingredient.name if self.ingredient_id else self.item_name
+        return f"{self.week_start} - {name}"

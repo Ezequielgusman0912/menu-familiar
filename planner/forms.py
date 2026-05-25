@@ -1,21 +1,42 @@
 from django import forms
 
-from .models import Dish, GroceryItem, MealPlanEntry
+from .models import Dish, DishIngredient, GroceryItem, Ingredient, MealPlanEntry
 
 
 class DishForm(forms.ModelForm):
     class Meta:
         model = Dish
-        fields = ["name", "ingredients", "notes"]
+        fields = ["name", "notes"]
         widgets = {
             "name": forms.TextInput(attrs={"placeholder": "Ej. Milanesas con pure"}),
-            "ingredients": forms.Textarea(
-                attrs={
-                    "rows": 4,
-                    "placeholder": "Ej. Milanesas x4\nPapas x2\nTomate",
-                }
-            ),
             "notes": forms.Textarea(attrs={"rows": 2, "placeholder": "Opcional"}),
+        }
+
+
+class IngredientForm(forms.ModelForm):
+    class Meta:
+        model = Ingredient
+        fields = ["name"]
+        widgets = {
+            "name": forms.TextInput(attrs={"placeholder": "Ej. Papa"}),
+        }
+
+    def clean_name(self):
+        return Ingredient.normalize_name(self.cleaned_data["name"])
+
+
+class DishIngredientForm(forms.ModelForm):
+    class Meta:
+        model = DishIngredient
+        fields = ["ingredient", "quantity"]
+        labels = {
+            "ingredient": "Item",
+            "quantity": "Cantidad",
+        }
+        widgets = {
+            "quantity": forms.NumberInput(
+                attrs={"min": "0.01", "step": "0.01", "placeholder": "Ej. 2"}
+            ),
         }
 
 
@@ -37,4 +58,3 @@ class GroceryItemForm(forms.ModelForm):
             "name": forms.TextInput(attrs={"placeholder": "Ej. Lavandina"}),
             "quantity": forms.TextInput(attrs={"placeholder": "Ej. 2 o 1 bidon"}),
         }
-

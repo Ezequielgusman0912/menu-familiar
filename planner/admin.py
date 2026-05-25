@@ -1,12 +1,24 @@
 from django.contrib import admin
 
-from .models import Dish, MealPlanEntry
+from .models import Dish, DishIngredient, Ingredient, MealPlanEntry
+
+
+class DishIngredientInline(admin.TabularInline):
+    model = DishIngredient
+    extra = 1
 
 
 @admin.register(Dish)
 class DishAdmin(admin.ModelAdmin):
     list_display = ("name", "created_at")
-    search_fields = ("name", "ingredients")
+    search_fields = ("name", "dish_items__ingredient__name")
+    inlines = [DishIngredientInline]
+
+
+@admin.register(Ingredient)
+class IngredientAdmin(admin.ModelAdmin):
+    list_display = ("name", "created_at")
+    search_fields = ("name",)
 
 
 @admin.register(MealPlanEntry)

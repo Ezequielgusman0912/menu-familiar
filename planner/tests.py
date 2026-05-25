@@ -4,34 +4,36 @@ from datetime import date
 from django.test import TestCase
 from django.urls import reverse
 
-from .models import Dish, GroceryItem, GroceryItemState, MealPlanEntry
+from .models import Dish, DishIngredient, GroceryItem, GroceryItemState, Ingredient, MealPlanEntry
 
 
 class DishModelTests(TestCase):
-    def test_ingredient_list_splits_multiple_formats(self):
-        dish = Dish(name="Tarta", ingredients="Huevos, Cebolla\nQueso; Leche")
+    def test_ingredient_entries_use_saved_items(self):
+        dish = Dish.objects.create(name="Tarta")
+        huevos = Ingredient.objects.create(name="Huevos")
+        queso = Ingredient.objects.create(name="Queso")
+        DishIngredient.objects.create(dish=dish, ingredient=huevos, quantity=2)
+        DishIngredient.objects.create(dish=dish, ingredient=queso, quantity=1)
+
+        entries = dish.ingredient_entries()
 
         self.assertEqual(
-            dish.ingredient_list(),
-            ["Huevos", "Cebolla", "Queso", "Leche"],
-        )
-
-    def test_ingredient_entries_parse_quantities(self):
-        dish = Dish(name="Mila", ingredients="Milanesas x3\nPapas x2,5\nTomate")
-
-        self.assertEqual(
-            dish.ingredient_entries(),
+            entries,
             [
-                {"name": "Milanesas", "quantity": Decimal("3")},
-                {"name": "Papas", "quantity": Decimal("2.5")},
-                {"name": "Tomate", "quantity": Decimal("1")},
+                {"id": huevos.id, "name": "Huevo", "quantity": Decimal("2")},
+                {"id": queso.id, "name": "Queso", "quantity": Decimal("1")},
             ],
         )
+
+    def test_ingredient_name_is_normalized_to_singular(self):
+        ingredient = Ingredient.objects.create(name="  papas  ")
+
+        self.assertEqual(ingredient.name, "Papa")
 
 
 class DashboardTests(TestCase):
     def test_dashboard_renders_planned_meal(self):
-        dish = Dish.objects.create(name="Pasta", ingredients="Fideos\nSalsa")
+        dish = Dish.objects.create(name="Pasta")
         MealPlanEntry.objects.create(
             date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
         )
@@ -47,7 +49,7 @@ class DashboardTests(TestCase):
         self.assertEqual(response.content, b"ok")
 
     def test_delete_meal_removes_entry(self):
-        dish = Dish.objects.create(name="Tarta", ingredients="Huevos")
+        dish = Dish.objects.create(name="Tarta")
         entry = MealPlanEntry.objects.create(
             date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
         )
@@ -61,15 +63,35 @@ class DashboardTests(TestCase):
         self.assertFalse(MealPlanEntry.objects.filter(pk=entry.id).exists())
 
     def test_dashboard_shows_ingredient_quantity_sum(self):
-        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3\nTomate")
+        dish = Dish.objects.create(name="Milanesas")
+        papa = Ingredient.objects.create(name="Papas")
+        DishIngredient.objects.create(dish=dish, ingredient=papa, quantity=3)
         MealPlanEntry.objects.create(
             date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
         )
 
         response = self.client.get(reverse("dashboard"), {"week": "2026-04-27"})
 
-        self.assertContains(response, "Papas")
+        self.assertContains(response, "Papa")
         self.assertContains(response, 'value="3"')
+
+    def test_dashboard_sums_same_item_across_dishes(self):
+        papa = Ingredient.objects.create(name="Papa")
+        first = Dish.objects.create(name="Milanesas")
+        second = Dish.objects.create(name="Pastel")
+        DishIngredient.objects.create(dish=first, ingredient=papa, quantity=2)
+        DishIngredient.objects.create(dish=second, ingredient=papa, quantity=3)
+        MealPlanEntry.objects.create(
+            date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=first
+        )
+        MealPlanEntry.objects.create(
+            date=date(2026, 4, 28), meal_type=MealPlanEntry.LUNCH, dish=second
+        )
+
+        response = self.client.get(reverse("dashboard"), {"week": "2026-04-27"})
+
+        self.assertContains(response, "Papa")
+        self.assertContains(response, 'value="5"')
 
     def test_add_manual_grocery_item(self):
         response = self.client.post(
@@ -89,7 +111,9 @@ class DashboardTests(TestCase):
         )
 
     def test_toggle_planned_item_marks_checked(self):
-        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3")
+        dish = Dish.objects.create(name="Milanesas")
+        papa = Ingredient.objects.create(name="Papas")
+        DishIngredient.objects.create(dish=dish, ingredient=papa, quantity=3)
         MealPlanEntry.objects.create(
             date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
         )
@@ -98,7 +122,7 @@ class DashboardTests(TestCase):
             reverse("dashboard") + "?week=2026-04-27",
             {
                 "action": "toggle_planned_item",
-                "item_name": "Papas",
+                "ingredient_id": papa.id,
                 "is_checked": "true",
             },
         )
@@ -106,7 +130,7 @@ class DashboardTests(TestCase):
         self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
         self.assertTrue(
             GroceryItemState.objects.get(
-                week_start=date(2026, 4, 27), item_name="Papas"
+                week_start=date(2026, 4, 27), ingredient=papa
             ).is_checked
         )
 
@@ -129,7 +153,9 @@ class DashboardTests(TestCase):
         self.assertTrue(item.is_checked)
 
     def test_update_planned_item_quantity_creates_override(self):
-        dish = Dish.objects.create(name="Milanesas", ingredients="Papas x3")
+        dish = Dish.objects.create(name="Milanesas")
+        papa = Ingredient.objects.create(name="Papas")
+        DishIngredient.objects.create(dish=dish, ingredient=papa, quantity=3)
         MealPlanEntry.objects.create(
             date=date(2026, 4, 27), meal_type=MealPlanEntry.LUNCH, dish=dish
         )
@@ -138,7 +164,7 @@ class DashboardTests(TestCase):
             reverse("dashboard") + "?week=2026-04-27",
             {
                 "action": "update_planned_item_quantity",
-                "item_name": "Papas",
+                "ingredient_id": papa.id,
                 "quantity": "2",
             },
         )
@@ -146,7 +172,7 @@ class DashboardTests(TestCase):
         self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
         self.assertEqual(
             GroceryItemState.objects.get(
-                week_start=date(2026, 4, 27), item_name="Papas"
+                week_start=date(2026, 4, 27), ingredient=papa
             ).quantity_override,
             "2",
         )
@@ -172,7 +198,7 @@ class DashboardTests(TestCase):
         self.assertEqual(item.quantity, "2")
 
     def test_dishes_page_updates_dish(self):
-        dish = Dish.objects.create(name="Milanesa", ingredients="Papas x2", notes="")
+        dish = Dish.objects.create(name="Milanesa", notes="")
 
         response = self.client.post(
             reverse("dishes") + f"?edit={dish.id}",
@@ -180,7 +206,6 @@ class DashboardTests(TestCase):
                 "action": "update_dish",
                 "dish_id": dish.id,
                 f"dish-{dish.id}-name": "Milanesa napolitana",
-                f"dish-{dish.id}-ingredients": "Papas x1\nQueso x1",
                 f"dish-{dish.id}-notes": "Cambiar segun semana",
             },
         )
@@ -188,11 +213,11 @@ class DashboardTests(TestCase):
         self.assertRedirects(response, reverse("dishes") + f"?edit={dish.id}")
         dish.refresh_from_db()
         self.assertEqual(dish.name, "Milanesa napolitana")
-        self.assertIn("Queso", dish.ingredients)
+        self.assertEqual(dish.notes, "Cambiar segun semana")
 
     def test_dishes_page_shows_editor_only_for_selected_dish(self):
-        first = Dish.objects.create(name="Milanesa", ingredients="Papas x2", notes="")
-        second = Dish.objects.create(name="Pizza", ingredients="Harina x1", notes="")
+        first = Dish.objects.create(name="Milanesa", notes="")
+        second = Dish.objects.create(name="Pizza", notes="")
 
         response = self.client.get(reverse("dishes"), {"edit": second.id})
 
@@ -200,3 +225,24 @@ class DashboardTests(TestCase):
         self.assertContains(response, 'Pizza')
         self.assertContains(response, f'dish-{second.id}-name')
         self.assertNotContains(response, f'dish-{first.id}-name')
+
+    def test_dishes_page_adds_item_to_dish(self):
+        dish = Dish.objects.create(name="Milanesa")
+        papa = Ingredient.objects.create(name="Papas")
+
+        response = self.client.post(
+            reverse("dishes") + f"?edit={dish.id}",
+            {
+                "action": "add_dish_item",
+                "dish_id": dish.id,
+                "dish-item-ingredient": papa.id,
+                "dish-item-quantity": "2",
+            },
+        )
+
+        self.assertRedirects(response, reverse("dishes") + f"?edit={dish.id}")
+        self.assertTrue(
+            DishIngredient.objects.filter(
+                dish=dish, ingredient=papa, quantity=Decimal("2")
+            ).exists()
+        )
