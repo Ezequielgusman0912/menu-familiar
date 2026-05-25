@@ -162,6 +162,18 @@ button {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
+.dishes-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.25rem;
+}
+
+.dishes-column {
+    display: grid;
+    align-content: start;
+    gap: 1.25rem;
+}
+
 .panel {
     padding: 1.25rem;
     backdrop-filter: blur(8px);
@@ -467,7 +479,8 @@ textarea::placeholder {
 
 @media (max-width: 820px) {
     .layout,
-    .forms-layout {
+    .forms-layout,
+    .dishes-workspace {
         grid-template-columns: 1fr;
     }
 
