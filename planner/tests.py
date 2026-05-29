@@ -246,7 +246,7 @@ class DashboardTests(TestCase):
 
     def test_dishes_page_filters_dishes_and_create_items(self):
         Dish.objects.create(name="Milanesa", notes="")
-        Dish.objects.create(name="Pizza", notes="")
+        pizza = Dish.objects.create(name="Pizza", notes="")
         Ingredient.objects.create(name="Papas")
         Ingredient.objects.create(name="Tomate")
 
@@ -255,9 +255,20 @@ class DashboardTests(TestCase):
         )
 
         self.assertContains(response, "Milanesa")
-        self.assertNotContains(response, "Pizza")
+        self.assertNotContains(response, f'href="/comidas/?edit={pizza.id}')
         self.assertContains(response, "Papa")
-        self.assertNotContains(response, "Tomate")
+        self.assertNotContains(response, 'aria-label="Cantidad de Tomate"')
+
+    def test_dishes_page_search_inputs_include_suggestion_lists(self):
+        Dish.objects.create(name="Milanesa", notes="")
+        Ingredient.objects.create(name="Papas")
+
+        response = self.client.get(reverse("dishes"))
+
+        self.assertContains(response, 'list="dish-options"')
+        self.assertContains(response, 'list="ingredient-options"')
+        self.assertContains(response, '<option value="Milanesa">', html=True)
+        self.assertContains(response, '<option value="Papa">', html=True)
 
     def test_dishes_page_creates_dish_with_selected_items(self):
         papa = Ingredient.objects.create(name="Papas", unit_type=Ingredient.KILOGRAM)
@@ -311,12 +322,12 @@ class DashboardTests(TestCase):
 
     def test_food_items_page_filters_and_updates_item(self):
         papa = Ingredient.objects.create(name="Papas")
-        Ingredient.objects.create(name="Tomate")
+        tomate = Ingredient.objects.create(name="Tomate")
 
         response = self.client.get(reverse("food_items"), {"item_q": "papa"})
 
         self.assertContains(response, "Papa")
-        self.assertNotContains(response, "Tomate")
+        self.assertNotContains(response, f'href="/items-comidas/?edit_item={tomate.id}')
 
         response = self.client.post(
             reverse("food_items") + f"?edit_item={papa.id}",
@@ -331,3 +342,11 @@ class DashboardTests(TestCase):
         self.assertRedirects(response, reverse("food_items") + f"?edit_item={papa.id}")
         papa.refresh_from_db()
         self.assertEqual(papa.unit_type, Ingredient.KILOGRAM)
+
+    def test_food_items_page_search_input_includes_suggestions(self):
+        Ingredient.objects.create(name="Papas")
+
+        response = self.client.get(reverse("food_items"))
+
+        self.assertContains(response, 'list="ingredient-options"')
+        self.assertContains(response, '<option value="Papa">', html=True)

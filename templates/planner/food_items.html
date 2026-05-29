@@ -60,6 +60,7 @@
                             type="search"
                             name="item_q"
                             value="{{ item_query }}"
+                            list="ingredient-options"
                             placeholder="Filtrar items"
                             aria-label="Filtrar items"
                         >
@@ -116,6 +117,12 @@
                 </section>
             </div>
         </section>
+
+        <datalist id="ingredient-options">
+            {% for ingredient_name in ingredient_options %}
+                <option value="{{ ingredient_name }}"></option>
+            {% endfor %}
+        </datalist>
     </main>
 </body>
 </html>

@@ -383,6 +383,10 @@ def dishes_page(request):
         "dish_query": dish_query,
         "dishes": dishes,
         "dish_count": Dish.objects.count(),
+        "dish_options": Dish.objects.order_by("name").values_list("name", flat=True),
+        "ingredient_options": Ingredient.objects.order_by("name").values_list(
+            "name", flat=True
+        ),
         "selected_dish": selected_dish,
         "selected_form": selected_form,
     }
@@ -445,6 +449,9 @@ def food_items_page(request):
         "item_query": item_query,
         "ingredients": ingredients,
         "ingredient_count": Ingredient.objects.count(),
+        "ingredient_options": Ingredient.objects.order_by("name").values_list(
+            "name", flat=True
+        ),
         "selected_ingredient": selected_ingredient,
         "selected_ingredient_form": selected_ingredient_form,
     }

@@ -48,6 +48,7 @@
                             type="search"
                             name="new_item_q"
                             value="{{ create_item_query }}"
+                            list="ingredient-options"
                             placeholder="Buscar items para esta comida"
                             aria-label="Buscar items para esta comida"
                         >
@@ -100,6 +101,7 @@
                             type="search"
                             name="dish_q"
                             value="{{ dish_query }}"
+                            list="dish-options"
                             placeholder="Filtrar comidas"
                             aria-label="Filtrar comidas"
                         >
@@ -186,6 +188,7 @@
                                         type="search"
                                         name="item_q"
                                         value="{{ edit_item_query }}"
+                                        list="ingredient-options"
                                         placeholder="Buscar item para sumar"
                                         aria-label="Buscar item para sumar"
                                     >
@@ -238,6 +241,17 @@
                 </section>
             </div>
         </section>
+
+        <datalist id="ingredient-options">
+            {% for ingredient_name in ingredient_options %}
+                <option value="{{ ingredient_name }}"></option>
+            {% endfor %}
+        </datalist>
+        <datalist id="dish-options">
+            {% for dish_name in dish_options %}
+                <option value="{{ dish_name }}"></option>
+            {% endfor %}
+        </datalist>
     </main>
 </body>
 </html>
