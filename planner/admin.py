@@ -17,7 +17,8 @@ class DishAdmin(admin.ModelAdmin):
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
-    list_display = ("name", "created_at")
+    list_display = ("name", "unit_type", "created_at")
+    list_filter = ("unit_type",)
     search_fields = ("name",)
 
 

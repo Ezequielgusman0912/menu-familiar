@@ -11,6 +11,7 @@
         <nav class="top-nav">
             <a class="nav-pill is-active" href="/">Semana</a>
             <a class="nav-pill" href="/comidas/">Comidas</a>
+            <a class="nav-pill" href="/items-comidas/">Items de comidas</a>
         </nav>
 
         <section class="hero">
@@ -129,6 +130,7 @@
                                         value="{{ item.quantity }}"
                                         aria-label="Cantidad de {{ item.name }}"
                                     >
+                                    <span class="quantity-unit">{{ item.unit_label }}</span>
                                     <button type="submit" class="ghost-button">Guardar</button>
                                 </form>
                             </div>
@@ -205,8 +207,8 @@
                     <h2>Comidas guardadas</h2>
                 </div>
                 <p class="muted panel-copy">
-                    La lista completa de platos ahora vive en una pagina aparte para editar nombre,
-                    ingredientes y notas de forma mas comoda.
+                    La lista de comidas vive en una pagina aparte. Los items tienen su propia vista
+                    para crearlos y editarlos sin mezclar tareas.
                 </p>
                 <a class="panel-cta" href="/comidas/">Abrir pagina de comidas</a>
             </section>

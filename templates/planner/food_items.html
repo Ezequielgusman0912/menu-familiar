@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Items de comidas</title>
+    <link rel="stylesheet" href="/static/planner/style.css">
+</head>
+<body>
+    <main class="page">
+        <nav class="top-nav">
+            <a class="nav-pill" href="/">Semana</a>
+            <a class="nav-pill" href="/comidas/">Comidas</a>
+            <a class="nav-pill is-active" href="/items-comidas/">Items de comidas</a>
+        </nav>
+
+        <section class="hero hero-compact">
+            <div>
+                <p class="eyebrow">Catalogo reusable</p>
+                <h1>Items de comidas</h1>
+                <p class="intro">
+                    Crea, busca y edita los items que despues se usan dentro de cada comida.
+                </p>
+            </div>
+            <div class="week-nav">
+                <a href="/comidas/">Volver a comidas</a>
+            </div>
+        </section>
+
+        {% if messages %}
+            <section class="messages">
+                {% for message in messages %}
+                    <div class="message">{{ message }}</div>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <section class="dishes-workspace">
+            <div class="dishes-column">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>Nuevo item</h2>
+                    </div>
+                    <form method="post" class="form-grid">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_ingredient">
+                        {{ ingredient_form.as_p }}
+                        <button type="submit">Guardar item</button>
+                    </form>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>Buscar items</h2>
+                        <span>{{ ingredient_count }} cargados</span>
+                    </div>
+
+                    <form method="get" class="filter-form filter-form-top">
+                        <input
+                            type="search"
+                            name="item_q"
+                            value="{{ item_query }}"
+                            placeholder="Filtrar items"
+                            aria-label="Filtrar items"
+                        >
+                        <button type="submit" class="ghost-button">Filtrar</button>
+                    </form>
+
+                    {% if item_query %}
+                        <div class="item-chip-list">
+                            {% for ingredient in ingredients %}
+                                <a
+                                    class="item-chip {% if selected_ingredient and selected_ingredient.id == ingredient.id %}is-selected{% endif %}"
+                                    href="/items-comidas/?edit_item={{ ingredient.id }}&item_q={{ item_query|urlencode }}"
+                                >
+                                    {{ ingredient.name }} <small>{{ ingredient.get_unit_type_display }}</small>
+                                </a>
+                            {% empty %}
+                                <p class="muted">Sin resultados para ese filtro.</p>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="muted">Usa el filtro para traer items.</p>
+                    {% endif %}
+                </section>
+            </div>
+
+            <div class="dishes-column">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>Editor de item</h2>
+                        {% if selected_ingredient %}<span>{{ selected_ingredient.name }}</span>{% endif %}
+                    </div>
+
+                    {% if selected_ingredient and selected_ingredient_form %}
+                        <article class="inline-editor">
+                            <form method="post" class="form-grid">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_ingredient">
+                                <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                                {{ selected_ingredient_form.as_p }}
+                                <button type="submit">Guardar cambios</button>
+                            </form>
+                            <form method="post" class="inline-form delete-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_ingredient">
+                                <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                                <button type="submit" class="danger-button">Eliminar item</button>
+                            </form>
+                        </article>
+                    {% else %}
+                        <p class="muted">
+                            Filtra y elegi un item desde el listado para abrir el editor.
+                        </p>
+                    {% endif %}
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

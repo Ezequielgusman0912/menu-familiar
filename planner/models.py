@@ -4,7 +4,15 @@ from django.db import models
 
 
 class Ingredient(models.Model):
+    UNIT = "unidad"
+    KILOGRAM = "kg"
+    UNIT_TYPES = [
+        (UNIT, "Unidad"),
+        (KILOGRAM, "Kg"),
+    ]
+
     name = models.CharField(max_length=120, unique=True)
+    unit_type = models.CharField(max_length=20, choices=UNIT_TYPES, default=UNIT)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -12,6 +20,10 @@ class Ingredient(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def unit_label(self):
+        return "kg" if self.unit_type == self.KILOGRAM else "un"
 
     def save(self, *args, **kwargs):
         self.name = self.normalize_name(self.name)
@@ -42,6 +54,7 @@ class Dish(models.Model):
                 "id": dish_item.ingredient_id,
                 "name": dish_item.ingredient.name,
                 "quantity": dish_item.quantity,
+                "unit_label": dish_item.ingredient.unit_label,
             }
             for dish_item in self.dish_items.select_related("ingredient")
         ]

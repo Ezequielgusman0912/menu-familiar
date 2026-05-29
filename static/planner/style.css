@@ -296,6 +296,11 @@ td strong {
     padding: 0.65rem 0.5rem;
 }
 
+.quantity-unit {
+    min-width: 2rem;
+    color: var(--muted);
+}
+
 .manual-edit-form {
     flex: 1;
     justify-content: flex-start;
@@ -464,6 +469,45 @@ textarea::placeholder {
     border-top: 1px solid var(--line);
 }
 
+.filter-form-top {
+    margin-top: 0;
+}
+
+.selectable-list {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0.5rem 0 1rem;
+}
+
+.selectable-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 6rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(7, 17, 31, 0.56);
+}
+
+.selectable-row span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.selectable-row input[type="checkbox"] {
+    width: auto;
+}
+
+.selectable-row input[type="number"] {
+    text-align: center;
+}
+
+small {
+    color: var(--muted);
+}
+
 .inline-editor {
     margin-top: 1rem;
     padding: 1rem;
@@ -498,7 +542,8 @@ textarea::placeholder {
     .quantity-form,
     .dish-item-list li,
     .dish-item-add-form,
-    .filter-form {
+    .filter-form,
+    .selectable-row {
         grid-template-columns: 1fr;
         flex-wrap: wrap;
         justify-content: flex-start;

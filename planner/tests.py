@@ -20,8 +20,18 @@ class DishModelTests(TestCase):
         self.assertEqual(
             entries,
             [
-                {"id": huevos.id, "name": "Huevo", "quantity": Decimal("2")},
-                {"id": queso.id, "name": "Queso", "quantity": Decimal("1")},
+                {
+                    "id": huevos.id,
+                    "name": "Huevo",
+                    "quantity": Decimal("2"),
+                    "unit_label": "un",
+                },
+                {
+                    "id": queso.id,
+                    "name": "Queso",
+                    "quantity": Decimal("1"),
+                    "unit_label": "un",
+                },
             ],
         )
 
@@ -221,7 +231,7 @@ class DashboardTests(TestCase):
 
         response = self.client.get(reverse("dishes"), {"edit": second.id})
 
-        self.assertContains(response, 'Editor del plato')
+        self.assertContains(response, 'Editor de comida')
         self.assertContains(response, 'Pizza')
         self.assertContains(response, f'dish-{second.id}-name')
         self.assertNotContains(response, f'dish-{first.id}-name')
@@ -231,23 +241,52 @@ class DashboardTests(TestCase):
 
         response = self.client.get(reverse("dishes"))
 
-        self.assertContains(response, "Usa el filtro para traer platos.")
+        self.assertContains(response, "Usa el filtro para traer comidas.")
         self.assertNotContains(response, 'class="dish-selector')
 
-    def test_dishes_page_filters_dishes_and_items(self):
+    def test_dishes_page_filters_dishes_and_create_items(self):
         Dish.objects.create(name="Milanesa", notes="")
         Dish.objects.create(name="Pizza", notes="")
         Ingredient.objects.create(name="Papas")
         Ingredient.objects.create(name="Tomate")
 
         response = self.client.get(
-            reverse("dishes"), {"dish_q": "mila", "item_q": "papa"}
+            reverse("dishes"), {"dish_q": "mila", "new_item_q": "papa"}
         )
 
         self.assertContains(response, "Milanesa")
         self.assertNotContains(response, "Pizza")
         self.assertContains(response, "Papa")
         self.assertNotContains(response, "Tomate")
+
+    def test_dishes_page_creates_dish_with_selected_items(self):
+        papa = Ingredient.objects.create(name="Papas", unit_type=Ingredient.KILOGRAM)
+        huevo = Ingredient.objects.create(name="Huevos")
+
+        response = self.client.post(
+            reverse("dishes"),
+            {
+                "action": "add_dish",
+                "dish-name": "Tortilla",
+                "dish-notes": "",
+                "ingredient_ids": [papa.id, huevo.id],
+                f"ingredient_quantity_{papa.id}": "1.5",
+                f"ingredient_quantity_{huevo.id}": "4",
+            },
+        )
+
+        dish = Dish.objects.get(name="Tortilla")
+        self.assertRedirects(response, reverse("dishes") + f"?edit={dish.id}")
+        self.assertTrue(
+            DishIngredient.objects.filter(
+                dish=dish, ingredient=papa, quantity=Decimal("1.5")
+            ).exists()
+        )
+        self.assertTrue(
+            DishIngredient.objects.filter(
+                dish=dish, ingredient=huevo, quantity=Decimal("4")
+            ).exists()
+        )
 
     def test_dishes_page_adds_item_to_dish(self):
         dish = Dish.objects.create(name="Milanesa")
@@ -269,3 +308,26 @@ class DashboardTests(TestCase):
                 dish=dish, ingredient=papa, quantity=Decimal("2")
             ).exists()
         )
+
+    def test_food_items_page_filters_and_updates_item(self):
+        papa = Ingredient.objects.create(name="Papas")
+        Ingredient.objects.create(name="Tomate")
+
+        response = self.client.get(reverse("food_items"), {"item_q": "papa"})
+
+        self.assertContains(response, "Papa")
+        self.assertNotContains(response, "Tomate")
+
+        response = self.client.post(
+            reverse("food_items") + f"?edit_item={papa.id}",
+            {
+                "action": "update_ingredient",
+                "ingredient_id": papa.id,
+                f"ingredient-{papa.id}-name": "Papa",
+                f"ingredient-{papa.id}-unit_type": Ingredient.KILOGRAM,
+            },
+        )
+
+        self.assertRedirects(response, reverse("food_items") + f"?edit_item={papa.id}")
+        papa.refresh_from_db()
+        self.assertEqual(papa.unit_type, Ingredient.KILOGRAM)

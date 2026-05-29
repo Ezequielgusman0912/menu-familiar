@@ -11,15 +11,15 @@
         <nav class="top-nav">
             <a class="nav-pill" href="/">Semana</a>
             <a class="nav-pill is-active" href="/comidas/">Comidas</a>
+            <a class="nav-pill" href="/items-comidas/">Items de comidas</a>
         </nav>
 
         <section class="hero hero-compact">
             <div>
-                <p class="eyebrow">Biblioteca editable</p>
+                <p class="eyebrow">Platos reutilizables</p>
                 <h1>Comidas guardadas</h1>
                 <p class="intro">
-                    Editen el plato con items reutilizables y cantidades. La lista del super suma
-                    por item, asi papa y papas dejan de quedar separados.
+                    Crea una comida con sus items en el mismo paso, o busca un plato existente para editarlo.
                 </p>
             </div>
             <div class="week-nav">
@@ -39,83 +39,96 @@
             <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Nuevo plato</h2>
+                        <h2>Nueva comida</h2>
+                        <a class="inline-link" href="/items-comidas/">Editar items</a>
                     </div>
+
+                    <form method="get" class="filter-form filter-form-top">
+                        <input
+                            type="search"
+                            name="new_item_q"
+                            value="{{ create_item_query }}"
+                            placeholder="Buscar items para esta comida"
+                            aria-label="Buscar items para esta comida"
+                        >
+                        <button type="submit" class="ghost-button">Buscar</button>
+                    </form>
+
                     <form method="post" class="form-grid">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="add_dish">
                         {{ dish_form.as_p }}
-                        <button type="submit">Guardar plato</button>
+
+                        {% if create_item_query %}
+                            <div class="selectable-list">
+                                {% for ingredient in create_ingredients %}
+                                    <label class="selectable-row">
+                                        <span>
+                                            <input type="checkbox" name="ingredient_ids" value="{{ ingredient.id }}">
+                                            {{ ingredient.name }}
+                                            <small>{{ ingredient.get_unit_type_display }}</small>
+                                        </span>
+                                        <input
+                                            type="number"
+                                            min="0.01"
+                                            step="0.01"
+                                            name="ingredient_quantity_{{ ingredient.id }}"
+                                            value="1"
+                                            aria-label="Cantidad de {{ ingredient.name }}"
+                                        >
+                                    </label>
+                                {% empty %}
+                                    <p class="muted">Sin resultados para ese filtro.</p>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="muted">Busca items para agregarlos al guardar la comida.</p>
+                        {% endif %}
+
+                        <button type="submit">Guardar comida</button>
                     </form>
                 </section>
 
                 <section class="panel">
-                <div class="panel-header">
-                    <h2>Items</h2>
-                    <span>{{ ingredient_count }} cargados</span>
-                </div>
-
-                <form method="post" class="form-grid item-create-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="add_ingredient">
-                    {{ ingredient_form.as_p }}
-                    <button type="submit">Guardar item</button>
-                </form>
-
-                <form method="get" class="filter-form">
-                    <input
-                        type="search"
-                        name="item_q"
-                        value="{{ ingredient_query }}"
-                        placeholder="Filtrar items"
-                        aria-label="Filtrar items"
-                    >
-                    <button type="submit" class="ghost-button">Filtrar</button>
-                </form>
-
-                {% if ingredient_query %}
-                    <div class="item-chip-list">
-                        {% for ingredient in ingredients %}
-                            <a
-                                class="item-chip {% if selected_ingredient and selected_ingredient.id == ingredient.id %}is-selected{% endif %}"
-                                href="/comidas/?edit_item={{ ingredient.id }}&item_q={{ ingredient_query|urlencode }}"
-                            >
-                                {{ ingredient.name }}
-                            </a>
-                        {% empty %}
-                            <p class="muted">Sin resultados para ese filtro.</p>
-                        {% endfor %}
+                    <div class="panel-header">
+                        <h2>Buscar comidas</h2>
+                        <span>{{ dish_count }} cargadas</span>
                     </div>
-                {% endif %}
 
-                {% if selected_ingredient and selected_ingredient_form %}
-                    <article class="inline-editor">
-                        <div class="panel-header inner-header">
-                            <h3>Editor de item</h3>
-                            <span>{{ selected_ingredient.name }}</span>
+                    <form method="get" class="filter-form filter-form-top">
+                        <input
+                            type="search"
+                            name="dish_q"
+                            value="{{ dish_query }}"
+                            placeholder="Filtrar comidas"
+                            aria-label="Filtrar comidas"
+                        >
+                        <button type="submit" class="ghost-button">Filtrar</button>
+                    </form>
+
+                    {% if dish_query %}
+                        <div class="dish-selector-list">
+                            {% for dish in dishes %}
+                                <a
+                                    class="dish-selector {% if selected_dish and selected_dish.id == dish.id %}is-selected{% endif %}"
+                                    href="/comidas/?edit={{ dish.id }}&dish_q={{ dish_query|urlencode }}"
+                                >
+                                    {{ dish.name }}
+                                </a>
+                            {% empty %}
+                                <p class="muted">Sin resultados para ese filtro.</p>
+                            {% endfor %}
                         </div>
-                        <form method="post" class="form-grid">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="update_ingredient">
-                            <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
-                            {{ selected_ingredient_form.as_p }}
-                            <button type="submit">Guardar cambios</button>
-                        </form>
-                        <form method="post" class="inline-form delete-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="delete_ingredient">
-                            <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
-                            <button type="submit" class="danger-button">Eliminar item</button>
-                        </form>
-                    </article>
-                {% endif %}
-            </section>
+                    {% else %}
+                        <p class="muted">Usa el filtro para traer comidas.</p>
+                    {% endif %}
+                </section>
             </div>
 
             <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Editor del plato</h2>
+                        <h2>Editor de comida</h2>
                         {% if selected_dish %}<span>{{ selected_dish.name }}</span>{% endif %}
                     </div>
 
@@ -126,20 +139,21 @@
                                 <input type="hidden" name="action" value="update_dish">
                                 <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
                                 {{ selected_form.as_p }}
-                                <div class="editor-actions">
-                                    <button type="submit">Guardar cambios</button>
-                                </div>
+                                <button type="submit">Guardar cambios</button>
                             </form>
 
                             <div class="dish-items-editor">
                                 <div class="panel-header inner-header">
-                                    <h3>Items del plato</h3>
+                                    <h3>Items de la comida</h3>
                                     <span>{{ selected_dish.dish_items.count }} items</span>
                                 </div>
                                 <ul class="dish-item-list">
                                     {% for dish_item in selected_dish.dish_items.all %}
                                         <li>
-                                            <span>{{ dish_item.ingredient.name }}</span>
+                                            <span>
+                                                {{ dish_item.ingredient.name }}
+                                                <small>{{ dish_item.ingredient.get_unit_type_display }}</small>
+                                            </span>
                                             <form method="post" class="quantity-form">
                                                 {% csrf_token %}
                                                 <input type="hidden" name="action" value="update_dish_item">
@@ -162,7 +176,7 @@
                                             </form>
                                         </li>
                                     {% empty %}
-                                        <li class="muted">Este plato todavia no tiene items.</li>
+                                        <li class="muted">Esta comida todavia no tiene items.</li>
                                     {% endfor %}
                                 </ul>
 
@@ -171,20 +185,40 @@
                                     <input
                                         type="search"
                                         name="item_q"
-                                        value="{{ ingredient_query }}"
+                                        value="{{ edit_item_query }}"
                                         placeholder="Buscar item para sumar"
                                         aria-label="Buscar item para sumar"
                                     >
                                     <button type="submit" class="ghost-button">Buscar</button>
                                 </form>
 
-                                {% if ingredient_query %}
-                                    <form method="post" class="form-grid compact-form dish-item-add-form">
+                                {% if edit_item_query %}
+                                    <form method="post" class="form-grid compact-form">
                                         {% csrf_token %}
-                                        <input type="hidden" name="action" value="add_dish_item">
+                                        <input type="hidden" name="action" value="add_selected_dish_items">
                                         <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
-                                        {{ dish_item_form.as_p }}
-                                        <button type="submit">Sumar item</button>
+                                        <div class="selectable-list">
+                                            {% for ingredient in ingredients %}
+                                                <label class="selectable-row">
+                                                    <span>
+                                                        <input type="checkbox" name="ingredient_ids" value="{{ ingredient.id }}">
+                                                        {{ ingredient.name }}
+                                                        <small>{{ ingredient.get_unit_type_display }}</small>
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        min="0.01"
+                                                        step="0.01"
+                                                        name="ingredient_quantity_{{ ingredient.id }}"
+                                                        value="1"
+                                                        aria-label="Cantidad de {{ ingredient.name }}"
+                                                    >
+                                                </label>
+                                            {% empty %}
+                                                <p class="muted">Sin resultados para ese filtro.</p>
+                                            {% endfor %}
+                                        </div>
+                                        <button type="submit">Sumar seleccionados</button>
                                     </form>
                                 {% endif %}
                             </div>
@@ -193,50 +227,15 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="delete_dish">
                                 <input type="hidden" name="dish_id" value="{{ selected_dish.id }}">
-                                <button type="submit" class="danger-button">Eliminar plato</button>
+                                <button type="submit" class="danger-button">Eliminar comida</button>
                             </form>
                         </article>
                     {% else %}
                         <p class="muted">
-                            Filtra y elegi un plato desde el listado inferior para abrir el editor.
+                            Filtra y elegi una comida desde el listado para abrir el editor.
                         </p>
                     {% endif %}
                 </section>
-
-                <section class="panel">
-                <div class="panel-header">
-                    <h2>Platos</h2>
-                    <span>{{ dish_count }} cargados</span>
-                </div>
-
-                <form method="get" class="filter-form">
-                    <input
-                        type="search"
-                        name="dish_q"
-                        value="{{ dish_query }}"
-                        placeholder="Filtrar platos"
-                        aria-label="Filtrar platos"
-                    >
-                    <button type="submit" class="ghost-button">Filtrar</button>
-                </form>
-
-                {% if dish_query %}
-                    <div class="dish-selector-list">
-                        {% for dish in dishes %}
-                            <a
-                                class="dish-selector {% if selected_dish and selected_dish.id == dish.id %}is-selected{% endif %}"
-                                href="/comidas/?edit={{ dish.id }}&dish_q={{ dish_query|urlencode }}"
-                            >
-                                {{ dish.name }}
-                            </a>
-                        {% empty %}
-                            <p class="muted">Sin resultados para ese filtro.</p>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="muted">Usa el filtro para traer platos.</p>
-                {% endif %}
-            </section>
             </div>
         </section>
     </main>

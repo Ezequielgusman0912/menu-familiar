@@ -41,7 +41,11 @@ def grocery_summary(entries, week_start):
         for ingredient in entry.dish.ingredient_entries():
             counter.setdefault(
                 ingredient["id"],
-                {"name": ingredient["name"], "quantity": Decimal("0")},
+                {
+                    "name": ingredient["name"],
+                    "quantity": Decimal("0"),
+                    "unit_label": ingredient["unit_label"],
+                },
             )
             counter[ingredient["id"]]["quantity"] += ingredient["quantity"]
 
@@ -60,11 +64,41 @@ def grocery_summary(entries, week_start):
                 "id": ingredient_id,
                 "name": item["name"],
                 "quantity": state.quantity_override or display_quantity if state else display_quantity,
+                "unit_label": item["unit_label"],
                 "is_checked": state.is_checked if state else False,
                 "kind": "planned",
             }
         )
     return items
+
+
+def filtered_ingredients(query):
+    if not query:
+        return Ingredient.objects.none()
+    return Ingredient.objects.filter(name__icontains=query)[:20]
+
+
+def add_selected_items_to_dish(dish, post_data):
+    for ingredient_id in post_data.getlist("ingredient_ids"):
+        ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+        if not ingredient:
+            continue
+
+        raw_quantity = post_data.get(f"ingredient_quantity_{ingredient_id}", "1")
+        raw_quantity = raw_quantity.replace(",", ".").strip() or "1"
+        try:
+            quantity = Decimal(raw_quantity)
+        except Exception:
+            quantity = Decimal("1")
+
+        dish_item, created = DishIngredient.objects.get_or_create(
+            dish=dish,
+            ingredient=ingredient,
+            defaults={"quantity": quantity},
+        )
+        if not created:
+            dish_item.quantity += quantity
+            dish_item.save(update_fields=["quantity"])
 
 
 def dashboard(request):
@@ -223,15 +257,14 @@ def dashboard(request):
 
 def dishes_page(request):
     dish_form = DishForm(prefix="dish")
-    ingredient_form = IngredientForm(prefix="ingredient")
     dish_item_form = DishIngredientForm(prefix="dish-item")
     dish_item_form.fields["ingredient"].queryset = Ingredient.objects.none()
     editing_dish_id = None
     invalid_edit_form = None
     selected_dish_id = request.GET.get("edit")
-    selected_ingredient_id = request.GET.get("edit_item")
     dish_query = request.GET.get("dish_q", "").strip()
-    ingredient_query = request.GET.get("item_q", "").strip()
+    create_item_query = request.GET.get("new_item_q", "").strip()
+    edit_item_query = request.GET.get("item_q", "").strip()
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -239,43 +272,16 @@ def dishes_page(request):
             dish_form = DishForm(request.POST, prefix="dish")
             if dish_form.is_valid():
                 created_dish = dish_form.save()
+                add_selected_items_to_dish(created_dish, request.POST)
                 messages.success(request, "Plato guardado.")
                 return redirect(f"{reverse('dishes')}?edit={created_dish.id}")
-        elif action == "add_ingredient":
-            ingredient_form = IngredientForm(request.POST, prefix="ingredient")
-            if ingredient_form.is_valid():
-                ingredient = ingredient_form.save()
-                messages.success(request, "Item guardado.")
-                return redirect(f"{reverse('dishes')}?edit_item={ingredient.id}")
-        elif action == "update_ingredient":
-            ingredient_id = request.POST.get("ingredient_id")
-            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
-            edit_item_form = IngredientForm(
-                request.POST, instance=ingredient, prefix=f"ingredient-{ingredient_id}"
-            )
-            if ingredient and edit_item_form.is_valid():
-                edit_item_form.save()
-                messages.success(request, "Item actualizado.")
-                return redirect(f"{reverse('dishes')}?edit_item={ingredient.id}")
-        elif action == "delete_ingredient":
-            ingredient_id = request.POST.get("ingredient_id")
-            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
-            if ingredient:
-                try:
-                    ingredient.delete()
-                    messages.success(request, "Item eliminado.")
-                except ProtectedError:
-                    messages.error(
-                        request,
-                        "No se puede eliminar un item que esta usado en un plato.",
-                    )
-            return redirect("dishes")
         elif action == "update_dish":
             dish_id = request.POST.get("dish_id")
             dish = Dish.objects.filter(pk=dish_id).first()
             edit_form = DishForm(request.POST, instance=dish, prefix=f"dish-{dish_id}")
             if dish and edit_form.is_valid():
                 edit_form.save()
+                add_selected_items_to_dish(dish, request.POST)
                 messages.success(request, "Plato actualizado.")
                 return redirect(f"{reverse('dishes')}?edit={dish.id}")
             editing_dish_id = int(dish_id) if dish_id and dish_id.isdigit() else None
@@ -308,6 +314,14 @@ def dishes_page(request):
                 messages.success(request, "Item agregado al plato.")
                 return redirect(f"{reverse('dishes')}?edit={dish.id}")
             selected_dish_id = dish_id
+        elif action == "add_selected_dish_items":
+            dish_id = request.POST.get("dish_id")
+            dish = Dish.objects.filter(pk=dish_id).first()
+            if dish:
+                add_selected_items_to_dish(dish, request.POST)
+                messages.success(request, "Items agregados a la comida.")
+                return redirect(f"{reverse('dishes')}?edit={dish.id}")
+            selected_dish_id = dish_id
         elif action == "update_dish_item":
             dish_item_id = request.POST.get("dish_item_id")
             dish_item = DishIngredient.objects.select_related("dish").filter(pk=dish_item_id).first()
@@ -334,8 +348,12 @@ def dishes_page(request):
         )
 
     ingredients = []
-    if ingredient_query:
-        ingredients = list(Ingredient.objects.filter(name__icontains=ingredient_query)[:20])
+    if edit_item_query:
+        ingredients = list(filtered_ingredients(edit_item_query))
+
+    create_ingredients = []
+    if create_item_query:
+        create_ingredients = list(filtered_ingredients(create_item_query))
 
     selected_dish = None
     selected_form = None
@@ -349,10 +367,68 @@ def dishes_page(request):
         selected_form = DishForm(instance=selected_dish, prefix=f"dish-{selected_dish.id}")
         if editing_dish_id == selected_dish.id and invalid_edit_form is not None:
             selected_form = invalid_edit_form
-        if ingredient_query:
-            dish_item_form.fields["ingredient"].queryset = Ingredient.objects.filter(
-                name__icontains=ingredient_query
-            )[:20]
+        if edit_item_query:
+            dish_item_form.fields["ingredient"].queryset = filtered_ingredients(
+                edit_item_query
+            )
+
+    context = {
+        "dish_form": dish_form,
+        "dish_item_form": dish_item_form,
+        "create_item_query": create_item_query,
+        "create_ingredients": create_ingredients,
+        "edit_item_query": edit_item_query,
+        "ingredients": ingredients,
+        "ingredient_count": Ingredient.objects.count(),
+        "dish_query": dish_query,
+        "dishes": dishes,
+        "dish_count": Dish.objects.count(),
+        "selected_dish": selected_dish,
+        "selected_form": selected_form,
+    }
+    return render(request, "planner/dishes.html", context)
+
+
+def food_items_page(request):
+    ingredient_form = IngredientForm(prefix="ingredient")
+    item_query = request.GET.get("item_q", "").strip()
+    selected_ingredient_id = request.GET.get("edit_item")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_ingredient":
+            ingredient_form = IngredientForm(request.POST, prefix="ingredient")
+            if ingredient_form.is_valid():
+                ingredient = ingredient_form.save()
+                messages.success(request, "Item guardado.")
+                return redirect(f"{reverse('food_items')}?edit_item={ingredient.id}")
+        elif action == "update_ingredient":
+            ingredient_id = request.POST.get("ingredient_id")
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            edit_item_form = IngredientForm(
+                request.POST, instance=ingredient, prefix=f"ingredient-{ingredient_id}"
+            )
+            if ingredient and edit_item_form.is_valid():
+                edit_item_form.save()
+                messages.success(request, "Item actualizado.")
+                return redirect(f"{reverse('food_items')}?edit_item={ingredient.id}")
+        elif action == "delete_ingredient":
+            ingredient_id = request.POST.get("ingredient_id")
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            if ingredient:
+                try:
+                    ingredient.delete()
+                    messages.success(request, "Item eliminado.")
+                except ProtectedError:
+                    messages.error(
+                        request,
+                        "No se puede eliminar un item que esta usado en un plato.",
+                    )
+            return redirect("food_items")
+
+    ingredients = []
+    if item_query:
+        ingredients = list(filtered_ingredients(item_query))
 
     selected_ingredient = None
     selected_ingredient_form = None
@@ -365,21 +441,14 @@ def dishes_page(request):
         )
 
     context = {
-        "dish_form": dish_form,
         "ingredient_form": ingredient_form,
-        "dish_item_form": dish_item_form,
-        "ingredient_query": ingredient_query,
+        "item_query": item_query,
         "ingredients": ingredients,
         "ingredient_count": Ingredient.objects.count(),
         "selected_ingredient": selected_ingredient,
         "selected_ingredient_form": selected_ingredient_form,
-        "dish_query": dish_query,
-        "dishes": dishes,
-        "dish_count": Dish.objects.count(),
-        "selected_dish": selected_dish,
-        "selected_form": selected_form,
     }
-    return render(request, "planner/dishes.html", context)
+    return render(request, "planner/food_items.html", context)
 
 
 def healthcheck(request):

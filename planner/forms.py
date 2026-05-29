@@ -16,7 +16,10 @@ class DishForm(forms.ModelForm):
 class IngredientForm(forms.ModelForm):
     class Meta:
         model = Ingredient
-        fields = ["name"]
+        fields = ["name", "unit_type"]
+        labels = {
+            "unit_type": "Se cuenta por",
+        }
         widgets = {
             "name": forms.TextInput(attrs={"placeholder": "Ej. Papa"}),
         }
