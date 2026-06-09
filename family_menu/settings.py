@@ -16,10 +16,15 @@ SECRET_KEY = os.getenv(
 )
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 railway_public_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
+vercel_url = os.getenv("VERCEL_URL", "").strip()
 
 allowed_hosts = split_env_list(os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost"))
 if railway_public_domain and railway_public_domain not in allowed_hosts:
     allowed_hosts.append(railway_public_domain)
+if vercel_url and vercel_url not in allowed_hosts:
+    allowed_hosts.append(vercel_url)
+if ".vercel.app" not in allowed_hosts:
+    allowed_hosts.append(".vercel.app")
 ALLOWED_HOSTS = allowed_hosts
 
 
@@ -114,7 +119,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = Path(os.getenv("STATIC_ROOT", BASE_DIR / 'staticfiles'))
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
@@ -127,6 +132,10 @@ if railway_public_domain:
     railway_origin = f"https://{railway_public_domain}"
     if railway_origin not in csrf_origins:
         csrf_origins.append(railway_origin)
+if vercel_url:
+    vercel_origin = f"https://{vercel_url}"
+    if vercel_origin not in csrf_origins:
+        csrf_origins.append(vercel_origin)
 CSRF_TRUSTED_ORIGINS = csrf_origins
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
