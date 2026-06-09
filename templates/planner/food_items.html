@@ -7,13 +7,8 @@
     <link rel="stylesheet" href="/static/planner/style.css">
 </head>
 <body>
+    {% include "planner/_aside.html" with active="items" %}
     <main class="page">
-        <nav class="top-nav">
-            <a class="nav-pill" href="/">Semana</a>
-            <a class="nav-pill" href="/comidas/">Comidas</a>
-            <a class="nav-pill is-active" href="/items-comidas/">Items de comidas</a>
-        </nav>
-
         <section class="hero hero-compact">
             <div>
                 <p class="eyebrow">Catalogo reusable</p>
@@ -39,7 +34,7 @@
             <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Nuevo item</h2>
+                        <h2><span class="title-icon">＋</span> Nuevo item</h2>
                     </div>
                     <form method="post" class="form-grid">
                         {% csrf_token %}

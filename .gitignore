@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 db.sqlite3
+*.sqlite3-journal
 .env
 staticfiles/
 .tmp-staticfiles/

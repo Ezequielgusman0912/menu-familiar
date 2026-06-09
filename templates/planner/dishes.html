@@ -7,13 +7,8 @@
     <link rel="stylesheet" href="/static/planner/style.css">
 </head>
 <body>
+    {% include "planner/_aside.html" with active="dishes" %}
     <main class="page">
-        <nav class="top-nav">
-            <a class="nav-pill" href="/">Semana</a>
-            <a class="nav-pill is-active" href="/comidas/">Comidas</a>
-            <a class="nav-pill" href="/items-comidas/">Items de comidas</a>
-        </nav>
-
         <section class="hero hero-compact">
             <div>
                 <p class="eyebrow">Platos reutilizables</p>
@@ -39,7 +34,7 @@
             <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Nueva comida</h2>
+                        <h2><span class="title-icon">＋</span> Nueva comida</h2>
                         <a class="inline-link" href="/items-comidas/">Editar items</a>
                     </div>
 

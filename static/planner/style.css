@@ -27,9 +27,103 @@ body {
         linear-gradient(180deg, #040a13 0%, #07111f 44%, #0a1830 100%);
 }
 
+.app-aside {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 17.5rem;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 1rem;
+    padding: 1rem 0.9rem;
+    background: rgba(3, 8, 14, 0.94);
+    border-right: 1px solid rgba(147, 169, 199, 0.16);
+    backdrop-filter: blur(14px);
+    z-index: 20;
+}
+
+.aside-brand {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0.35rem 0.9rem;
+    border-bottom: 1px solid rgba(147, 169, 199, 0.12);
+}
+
+.aside-brand strong,
+.aside-brand small {
+    display: block;
+}
+
+.aside-brand small,
+.aside-foot small {
+    color: var(--muted);
+}
+
+.brand-mark {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2e8fff, #16c784);
+    color: #03101a;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.side-nav {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+}
+
+.side-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.75rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    font-weight: 700;
+}
+
+.side-link:hover,
+.side-link.is-active {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(147, 169, 199, 0.12);
+}
+
+.nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-flex;
+    flex-shrink: 0;
+}
+
+.nav-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.aside-foot {
+    padding: 0.85rem 0.75rem 0.25rem;
+    border-top: 1px solid rgba(147, 169, 199, 0.12);
+}
+
 .page {
-    width: min(1180px, calc(100% - 2rem));
-    margin: 0 auto;
+    width: min(1180px, calc(100% - 19.5rem));
+    margin: 0 auto 0 calc(17.5rem + max(1rem, calc((100vw - 17.5rem - 1180px) / 2)));
     padding: 2rem 0 3rem;
 }
 
@@ -66,11 +160,17 @@ body {
 .hero {
     padding: 1.5rem;
     display: grid;
-    gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 0.8fr);
+    gap: 1.25rem;
+    align-items: start;
     margin-bottom: 1.5rem;
     background:
         linear-gradient(135deg, rgba(17, 37, 62, 0.96), rgba(8, 19, 34, 0.96)),
         var(--panel);
+}
+
+.hero-compact {
+    grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .hero-compact h1 {
@@ -112,6 +212,30 @@ h1 {
     flex-wrap: wrap;
 }
 
+.range-card {
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+    border: 1px solid rgba(147, 169, 199, 0.18);
+    border-radius: 8px;
+    background: rgba(4, 10, 19, 0.42);
+}
+
+.range-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: end;
+}
+
+.range-form label {
+    display: grid;
+    gap: 0.35rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
 .week-nav a,
 button {
     background: var(--accent);
@@ -123,6 +247,29 @@ button {
     font: inherit;
     cursor: pointer;
     font-weight: 700;
+}
+
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.95rem;
+}
+
+.title-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    margin-right: 0.35rem;
+    border-radius: 6px;
+    color: var(--accent-strong);
+    background: rgba(86, 180, 255, 0.12);
+    border: 1px solid rgba(86, 180, 255, 0.18);
+    font-size: 0.95rem;
+    vertical-align: middle;
 }
 
 .danger-button {
@@ -522,6 +669,35 @@ small {
 }
 
 @media (max-width: 820px) {
+    .app-aside {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        grid-template-rows: auto;
+        padding: 0.75rem;
+    }
+
+    .aside-brand,
+    .aside-foot {
+        display: none;
+    }
+
+    .side-nav {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .side-link {
+        justify-content: center;
+        min-height: 2.5rem;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .nav-icon {
+        display: none;
+    }
+
+    .hero,
     .layout,
     .forms-layout,
     .dishes-workspace {
@@ -530,7 +706,12 @@ small {
 
     .page {
         width: min(100% - 1rem, 1180px);
+        margin: 0 auto;
         padding-top: 1rem;
+    }
+
+    .range-form {
+        grid-template-columns: 1fr;
     }
 
     h1 {

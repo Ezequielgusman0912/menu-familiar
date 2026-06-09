@@ -106,6 +106,7 @@ class MealPlanEntry(models.Model):
 
 class GroceryItem(models.Model):
     week_start = models.DateField()
+    range_end = models.DateField()
     name = models.CharField(max_length=120)
     quantity = models.CharField(max_length=40, default="1")
     is_checked = models.BooleanField(default=False)
@@ -120,6 +121,7 @@ class GroceryItem(models.Model):
 
 class GroceryItemState(models.Model):
     week_start = models.DateField()
+    range_end = models.DateField()
     ingredient = models.ForeignKey(
         Ingredient,
         null=True,
@@ -135,7 +137,8 @@ class GroceryItemState(models.Model):
         ordering = ["ingredient__name", "item_name"]
         constraints = [
             models.UniqueConstraint(
-                fields=["week_start", "ingredient"], name="unique_grocery_item_state"
+                fields=["week_start", "range_end", "ingredient"],
+                name="unique_grocery_item_state_range",
             )
         ]
 

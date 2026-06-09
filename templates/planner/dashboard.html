@@ -7,26 +7,37 @@
     <link rel="stylesheet" href="/static/planner/style.css">
 </head>
 <body>
+    {% include "planner/_aside.html" with active="dashboard" %}
     <main class="page">
-        <nav class="top-nav">
-            <a class="nav-pill is-active" href="/">Semana</a>
-            <a class="nav-pill" href="/comidas/">Comidas</a>
-            <a class="nav-pill" href="/items-comidas/">Items de comidas</a>
-        </nav>
-
         <section class="hero">
             <div>
                 <p class="eyebrow">Plan semanal familiar</p>
                 <h1>Comidas y lista del super en un solo lugar</h1>
                 <p class="intro">
-                    Organicen almuerzo y cena por dia, ajusten cantidades segun la semana
+                    Organicen almuerzo y cena por dia, ajusten cantidades segun el rango
                     y mantengan la lista del super desde el telefono.
                 </p>
             </div>
-            <div class="week-nav">
-                <a href="/?week={{ previous_week|date:'Y-m-d' }}">Semana anterior</a>
-                <strong>{{ week_start|date:"d/m" }} al {{ week_end|date:"d/m" }}</strong>
-                <a href="/?week={{ next_week|date:'Y-m-d' }}">Semana siguiente</a>
+            <div class="range-card">
+                <form method="get" class="range-form">
+                    <label>
+                        Arranca
+                        <input type="date" name="start" value="{{ range_start|date:'Y-m-d' }}">
+                    </label>
+                    <label>
+                        Termina
+                        <input type="date" name="end" value="{{ range_end|date:'Y-m-d' }}">
+                    </label>
+                    <button type="submit" class="icon-button">
+                        <span aria-hidden="true">↻</span>
+                        Ver rango
+                    </button>
+                </form>
+                <div class="week-nav">
+                    <a href="/?start={{ previous_start|date:'Y-m-d' }}&end={{ previous_end|date:'Y-m-d' }}">Rango anterior</a>
+                    <strong>{{ range_start|date:"d/m" }} al {{ range_end|date:"d/m" }}</strong>
+                    <a href="/?start={{ next_start|date:'Y-m-d' }}&end={{ next_end|date:'Y-m-d' }}">Rango siguiente</a>
+                </div>
             </div>
         </section>
 
@@ -41,8 +52,8 @@
         <section class="layout">
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Grilla semanal</h2>
-                    <span>{{ today|date:"d/m/Y" }}</span>
+                    <h2><span class="title-icon">▦</span> Plan del rango</h2>
+                    <span>{{ range_length }} dias</span>
                 </div>
                 <div class="table-wrap">
                     <table>
@@ -102,10 +113,10 @@
 
             <section class="panel side-panel">
                 <div class="panel-header">
-                    <h2>Lista del super</h2>
+                    <h2><span class="title-icon">✓</span> Lista del super</h2>
                     <span>{{ grocery_count }} items</span>
                 </div>
-                <p class="muted panel-copy">Podes editar cantidades en esta semana sin tocar el plato original.</p>
+                <p class="muted panel-copy">Podes editar cantidades para este rango sin tocar el plato original.</p>
                 <ul class="grocery-list">
                     {% for item in grocery_items %}
                         <li>
@@ -191,20 +202,20 @@
         <section class="layout forms-layout">
             <section class="panel">
                 <div class="panel-header">
-                    <h2>Planear comida</h2>
+                    <h2><span class="title-icon">＋</span> Planear comida</h2>
                     <a class="inline-link" href="/comidas/">Editar comidas</a>
                 </div>
                 <form method="post" class="form-grid">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="add_meal">
                     {{ meal_form.as_p }}
-                    <button type="submit">Asignar a la semana</button>
+                    <button type="submit">Asignar al rango</button>
                 </form>
             </section>
 
             <section class="panel panel-highlight">
                 <div class="panel-header">
-                    <h2>Comidas guardadas</h2>
+                    <h2><span class="title-icon">◎</span> Comidas guardadas</h2>
                 </div>
                 <p class="muted panel-copy">
                     La lista de comidas vive en una pagina aparte. Los items tienen su propia vista

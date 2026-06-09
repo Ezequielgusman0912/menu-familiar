@@ -25,8 +25,28 @@ from .models import (
 )
 
 
+def parse_date(value, fallback):
+    try:
+        return date.fromisoformat(value) if value else fallback
+    except ValueError:
+        return fallback
+
+
 def start_of_week(day):
     return day - timedelta(days=day.weekday())
+
+
+def selected_range(request):
+    today = timezone.localdate()
+    start = parse_date(request.GET.get("start") or request.GET.get("week"), today)
+    end = parse_date(request.GET.get("end"), start + timedelta(days=6))
+    if end < start:
+        end = start
+    return start, end
+
+
+def range_url(start, end):
+    return f"{reverse('dashboard')}?start={start.isoformat()}&end={end.isoformat()}"
 
 
 def format_quantity(quantity):
@@ -35,7 +55,7 @@ def format_quantity(quantity):
     return str(quantity.normalize()).replace(".", ",")
 
 
-def grocery_summary(entries, week_start):
+def grocery_summary(entries, range_start, range_end):
     counter = {}
     for entry in entries:
         for ingredient in entry.dish.ingredient_entries():
@@ -51,7 +71,10 @@ def grocery_summary(entries, week_start):
 
     states = {
         state.ingredient_id: state
-        for state in GroceryItemState.objects.filter(week_start=week_start)
+        for state in GroceryItemState.objects.filter(
+            week_start=range_start,
+            range_end=range_end,
+        )
         if state.ingredient_id
     }
     items = []
@@ -103,13 +126,13 @@ def add_selected_items_to_dish(dish, post_data):
 
 def dashboard(request):
     today = timezone.localdate()
-    week_param = request.GET.get("week")
-    if week_param:
-        selected_day = date.fromisoformat(week_param)
-    else:
-        selected_day = today
-
-    week_start = start_of_week(selected_day)
+    range_start, range_end = selected_range(request)
+    range_length = (range_end - range_start).days + 1
+    previous_start = range_start - timedelta(days=range_length)
+    previous_end = range_end - timedelta(days=range_length)
+    next_start = range_start + timedelta(days=range_length)
+    next_end = range_end + timedelta(days=range_length)
+    redirect_to_range = range_url(range_start, range_end)
 
     if request.method == "POST":
         action = request.POST.get("action")
@@ -120,7 +143,7 @@ def dashboard(request):
             if dish_form.is_valid():
                 dish_form.save()
                 messages.success(request, "Plato guardado.")
-                return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+                return redirect(redirect_to_range)
         elif action == "delete_meal":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
@@ -131,17 +154,18 @@ def dashboard(request):
                 messages.success(request, "Comida eliminada.")
             else:
                 messages.error(request, "No se encontro la comida para eliminar.")
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            return redirect(redirect_to_range)
         elif action == "add_grocery_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(request.POST, prefix="grocery")
             if grocery_form.is_valid():
                 grocery_item = grocery_form.save(commit=False)
-                grocery_item.week_start = week_start
+                grocery_item.week_start = range_start
+                grocery_item.range_end = range_end
                 grocery_item.save()
                 messages.success(request, "Articulo agregado a la lista.")
-                return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+                return redirect(redirect_to_range)
         elif action == "update_planned_item_quantity":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
@@ -151,12 +175,13 @@ def dashboard(request):
             ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
             if ingredient and quantity:
                 GroceryItemState.objects.update_or_create(
-                    week_start=week_start,
+                    week_start=range_start,
+                    range_end=range_end,
                     ingredient=ingredient,
                     defaults={"quantity_override": quantity},
                 )
                 messages.success(request, f"Cantidad actualizada para {ingredient.name}.")
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            return redirect(redirect_to_range)
         elif action == "toggle_planned_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
@@ -166,42 +191,53 @@ def dashboard(request):
             ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
             if ingredient:
                 state, _ = GroceryItemState.objects.get_or_create(
-                    week_start=week_start,
+                    week_start=range_start,
+                    range_end=range_end,
                     ingredient=ingredient,
                 )
                 state.is_checked = is_checked
                 state.save(update_fields=["is_checked"])
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            return redirect(redirect_to_range)
         elif action == "toggle_manual_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(prefix="grocery")
             item_id = request.POST.get("item_id")
             is_checked = request.POST.get("is_checked") == "true"
-            GroceryItem.objects.filter(pk=item_id, week_start=week_start).update(
-                is_checked=is_checked
-            )
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).update(is_checked=is_checked)
+            return redirect(redirect_to_range)
         elif action == "update_manual_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(prefix="grocery")
             item_id = request.POST.get("item_id")
-            item = GroceryItem.objects.filter(pk=item_id, week_start=week_start).first()
+            item = GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).first()
             if item:
                 item.name = request.POST.get("name", item.name).strip() or item.name
                 item.quantity = request.POST.get("quantity", item.quantity).strip() or item.quantity
                 item.save(update_fields=["name", "quantity"])
                 messages.success(request, "Articulo actualizado.")
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            return redirect(redirect_to_range)
         elif action == "delete_manual_item":
             dish_form = DishForm(prefix="dish")
             meal_form = MealPlanEntryForm(prefix="meal")
             grocery_form = GroceryItemForm(prefix="grocery")
             item_id = request.POST.get("item_id")
-            GroceryItem.objects.filter(pk=item_id, week_start=week_start).delete()
+            GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).delete()
             messages.success(request, "Articulo eliminado de la lista.")
-            return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+            return redirect(redirect_to_range)
         else:
             meal_form = MealPlanEntryForm(request.POST, prefix="meal")
             dish_form = DishForm(prefix="dish")
@@ -209,26 +245,31 @@ def dashboard(request):
             if meal_form.is_valid():
                 meal_form.save()
                 messages.success(request, "Comida agendada.")
-                return redirect(f"{reverse('dashboard')}?week={week_start.isoformat()}")
+                return redirect(redirect_to_range)
     else:
         dish_form = DishForm(prefix="dish")
         meal_form = MealPlanEntryForm(
-            prefix="meal", initial={"date": today, "meal_type": MealPlanEntry.LUNCH}
+            prefix="meal", initial={"date": range_start, "meal_type": MealPlanEntry.LUNCH}
         )
         grocery_form = GroceryItemForm(prefix="grocery", initial={"quantity": "1"})
 
-    week_days = [week_start + timedelta(days=index) for index in range(7)]
-    week_end = week_start + timedelta(days=6)
+    week_days = [
+        range_start + timedelta(days=index)
+        for index in range((range_end - range_start).days + 1)
+    ]
     entries = (
         MealPlanEntry.objects.select_related("dish")
         .prefetch_related("dish__dish_items__ingredient")
-        .filter(date__range=(week_start, week_end))
+        .filter(date__range=(range_start, range_end))
         .order_by("date", "meal_type")
     )
 
     entries_by_slot = {(entry.date, entry.meal_type): entry for entry in entries}
-    manual_grocery_items = GroceryItem.objects.filter(week_start=week_start)
-    grocery_items = grocery_summary(entries, week_start)
+    manual_grocery_items = GroceryItem.objects.filter(
+        week_start=range_start,
+        range_end=range_end,
+    )
+    grocery_items = grocery_summary(entries, range_start, range_end)
     rows = []
     for day in week_days:
         rows.append(
@@ -246,10 +287,15 @@ def dashboard(request):
         "grocery_items": grocery_items,
         "manual_grocery_items": manual_grocery_items,
         "grocery_count": len(grocery_items) + manual_grocery_items.count(),
-        "week_start": week_start,
-        "week_end": week_end,
-        "previous_week": week_start - timedelta(days=7),
-        "next_week": week_start + timedelta(days=7),
+        "week_start": range_start,
+        "week_end": range_end,
+        "range_start": range_start,
+        "range_end": range_end,
+        "range_length": range_length,
+        "previous_start": previous_start,
+        "previous_end": previous_end,
+        "next_start": next_start,
+        "next_end": next_end,
         "today": today,
     }
     return render(request, "planner/dashboard.html", context)

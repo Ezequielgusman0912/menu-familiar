@@ -42,6 +42,8 @@ class DishModelTests(TestCase):
 
 
 class DashboardTests(TestCase):
+    range_url = reverse("dashboard") + "?start=2026-04-27&end=2026-05-03"
+
     def test_dashboard_renders_planned_meal(self):
         dish = Dish.objects.create(name="Pasta")
         MealPlanEntry.objects.create(
@@ -65,12 +67,28 @@ class DashboardTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {"action": "delete_meal", "entry_id": entry.id},
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         self.assertFalse(MealPlanEntry.objects.filter(pk=entry.id).exists())
+
+    def test_dashboard_uses_custom_range(self):
+        dish = Dish.objects.create(name="Wok")
+        MealPlanEntry.objects.create(
+            date=date(2026, 6, 10), meal_type=MealPlanEntry.LUNCH, dish=dish
+        )
+
+        response = self.client.get(
+            reverse("dashboard"),
+            {"start": "2026-06-10", "end": "2026-06-16"},
+        )
+
+        self.assertContains(response, "10/06 al 16/06")
+        self.assertContains(response, "miércoles 10/06")
+        self.assertContains(response, "martes 16/06")
+        self.assertContains(response, "Wok")
 
     def test_dashboard_shows_ingredient_quantity_sum(self):
         dish = Dish.objects.create(name="Milanesas")
@@ -105,7 +123,7 @@ class DashboardTests(TestCase):
 
     def test_add_manual_grocery_item(self):
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {
                 "action": "add_grocery_item",
                 "grocery-name": "Lavandina",
@@ -113,10 +131,13 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         self.assertTrue(
             GroceryItem.objects.filter(
-                week_start=date(2026, 4, 27), name="Lavandina", quantity="2"
+                week_start=date(2026, 4, 27),
+                range_end=date(2026, 5, 3),
+                name="Lavandina",
+                quantity="2",
             ).exists()
         )
 
@@ -129,7 +150,7 @@ class DashboardTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {
                 "action": "toggle_planned_item",
                 "ingredient_id": papa.id,
@@ -137,20 +158,25 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         self.assertTrue(
             GroceryItemState.objects.get(
-                week_start=date(2026, 4, 27), ingredient=papa
+                week_start=date(2026, 4, 27),
+                range_end=date(2026, 5, 3),
+                ingredient=papa,
             ).is_checked
         )
 
     def test_toggle_manual_item_marks_checked(self):
         item = GroceryItem.objects.create(
-            week_start=date(2026, 4, 27), name="Jabon", quantity="1"
+            week_start=date(2026, 4, 27),
+            range_end=date(2026, 5, 3),
+            name="Jabon",
+            quantity="1",
         )
 
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {
                 "action": "toggle_manual_item",
                 "item_id": item.id,
@@ -158,7 +184,7 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         item.refresh_from_db()
         self.assertTrue(item.is_checked)
 
@@ -171,7 +197,7 @@ class DashboardTests(TestCase):
         )
 
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {
                 "action": "update_planned_item_quantity",
                 "ingredient_id": papa.id,
@@ -179,21 +205,26 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         self.assertEqual(
             GroceryItemState.objects.get(
-                week_start=date(2026, 4, 27), ingredient=papa
+                week_start=date(2026, 4, 27),
+                range_end=date(2026, 5, 3),
+                ingredient=papa,
             ).quantity_override,
             "2",
         )
 
     def test_update_manual_item_changes_name_and_quantity(self):
         item = GroceryItem.objects.create(
-            week_start=date(2026, 4, 27), name="Jabon", quantity="1"
+            week_start=date(2026, 4, 27),
+            range_end=date(2026, 5, 3),
+            name="Jabon",
+            quantity="1",
         )
 
         response = self.client.post(
-            reverse("dashboard") + "?week=2026-04-27",
+            self.range_url,
             {
                 "action": "update_manual_item",
                 "item_id": item.id,
@@ -202,7 +233,7 @@ class DashboardTests(TestCase):
             },
         )
 
-        self.assertRedirects(response, reverse("dashboard") + "?week=2026-04-27")
+        self.assertRedirects(response, self.range_url)
         item.refresh_from_db()
         self.assertEqual(item.name, "Detergente")
         self.assertEqual(item.quantity, "2")
