@@ -9,7 +9,7 @@
 <body>
     {% include "planner/_aside.html" with active="dashboard" %}
     <main class="page">
-        <section class="hero">
+        <section class="hero hero-solo">
             <div>
                 <p class="eyebrow">Plan semanal familiar</p>
                 <h1>Comidas y lista del super en un solo lugar</h1>
@@ -17,27 +17,6 @@
                     Organicen almuerzo y cena por dia, ajusten cantidades segun el rango
                     y mantengan la lista del super desde el telefono.
                 </p>
-            </div>
-            <div class="range-card">
-                <form method="get" class="range-form">
-                    <label>
-                        Arranca
-                        <input type="date" name="start" value="{{ range_start|date:'Y-m-d' }}">
-                    </label>
-                    <label>
-                        Termina
-                        <input type="date" name="end" value="{{ range_end|date:'Y-m-d' }}">
-                    </label>
-                    <button type="submit" class="icon-button">
-                        <span aria-hidden="true">↻</span>
-                        Ver rango
-                    </button>
-                </form>
-                <div class="week-nav">
-                    <a href="/?start={{ previous_start|date:'Y-m-d' }}&end={{ previous_end|date:'Y-m-d' }}">Rango anterior</a>
-                    <strong>{{ range_start|date:"d/m" }} al {{ range_end|date:"d/m" }}</strong>
-                    <a href="/?start={{ next_start|date:'Y-m-d' }}&end={{ next_end|date:'Y-m-d' }}">Rango siguiente</a>
-                </div>
             </div>
         </section>
 
@@ -54,6 +33,27 @@
                 <div class="panel-header">
                     <h2><span class="title-icon">▦</span> Plan del rango</h2>
                     <span>{{ range_length }} dias</span>
+                </div>
+                <div class="range-toolbar">
+                    <form method="get" class="range-form">
+                        <label>
+                            Arranca
+                            <input type="date" name="start" value="{{ range_start|date:'Y-m-d' }}">
+                        </label>
+                        <label>
+                            Termina
+                            <input type="date" name="end" value="{{ range_end|date:'Y-m-d' }}">
+                        </label>
+                        <button type="submit" class="icon-button">
+                            <span aria-hidden="true">🔍</span>
+                            Buscar
+                        </button>
+                    </form>
+                    <div class="week-nav">
+                        <a href="/?start={{ previous_start|date:'Y-m-d' }}&end={{ previous_end|date:'Y-m-d' }}">‹ Anterior</a>
+                        <strong>{{ range_start|date:"d/m" }} al {{ range_end|date:"d/m" }}</strong>
+                        <a href="/?start={{ next_start|date:'Y-m-d' }}&end={{ next_end|date:'Y-m-d' }}">Siguiente ›</a>
+                    </div>
                 </div>
                 <div class="table-wrap">
                     <table>
