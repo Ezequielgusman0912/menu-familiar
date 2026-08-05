@@ -301,6 +301,118 @@ def dashboard(request):
     return render(request, "planner/dashboard.html", context)
 
 
+def grocery_view(request):
+    range_start, range_end = selected_range(request)
+    range_length = (range_end - range_start).days + 1
+    previous_start = range_start - timedelta(days=range_length)
+    previous_end = range_end - timedelta(days=range_length)
+    next_start = range_start + timedelta(days=range_length)
+    next_end = range_end + timedelta(days=range_length)
+    redirect_to_range = (
+        f"{reverse('grocery')}?start={range_start.isoformat()}&end={range_end.isoformat()}"
+    )
+
+    grocery_form = GroceryItemForm(prefix="grocery", initial={"quantity": "1"})
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_grocery_item":
+            grocery_form = GroceryItemForm(request.POST, prefix="grocery")
+            if grocery_form.is_valid():
+                grocery_item = grocery_form.save(commit=False)
+                grocery_item.week_start = range_start
+                grocery_item.range_end = range_end
+                grocery_item.save()
+                messages.success(request, "Articulo agregado a la lista.")
+                return redirect(redirect_to_range)
+        elif action == "update_planned_item_quantity":
+            ingredient_id = request.POST.get("ingredient_id")
+            quantity = request.POST.get("quantity", "").strip()
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            if ingredient and quantity:
+                GroceryItemState.objects.update_or_create(
+                    week_start=range_start,
+                    range_end=range_end,
+                    ingredient=ingredient,
+                    defaults={"quantity_override": quantity},
+                )
+                messages.success(request, f"Cantidad actualizada para {ingredient.name}.")
+            return redirect(redirect_to_range)
+        elif action == "toggle_planned_item":
+            ingredient_id = request.POST.get("ingredient_id")
+            is_checked = request.POST.get("is_checked") == "true"
+            ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
+            if ingredient:
+                state, _ = GroceryItemState.objects.get_or_create(
+                    week_start=range_start,
+                    range_end=range_end,
+                    ingredient=ingredient,
+                )
+                state.is_checked = is_checked
+                state.save(update_fields=["is_checked"])
+            return redirect(redirect_to_range)
+        elif action == "toggle_manual_item":
+            item_id = request.POST.get("item_id")
+            is_checked = request.POST.get("is_checked") == "true"
+            GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).update(is_checked=is_checked)
+            return redirect(redirect_to_range)
+        elif action == "update_manual_item":
+            item_id = request.POST.get("item_id")
+            item = GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).first()
+            if item:
+                item.name = request.POST.get("name", item.name).strip() or item.name
+                item.quantity = request.POST.get("quantity", item.quantity).strip() or item.quantity
+                item.save(update_fields=["name", "quantity"])
+                messages.success(request, "Articulo actualizado.")
+            return redirect(redirect_to_range)
+        elif action == "delete_manual_item":
+            item_id = request.POST.get("item_id")
+            GroceryItem.objects.filter(
+                pk=item_id,
+                week_start=range_start,
+                range_end=range_end,
+            ).delete()
+            messages.success(request, "Articulo eliminado de la lista.")
+            return redirect(redirect_to_range)
+
+    entries = (
+        MealPlanEntry.objects.select_related("dish")
+        .prefetch_related("dish__dish_items__ingredient")
+        .filter(date__range=(range_start, range_end))
+    )
+    manual_grocery_items = GroceryItem.objects.filter(
+        week_start=range_start,
+        range_end=range_end,
+    )
+    grocery_items = grocery_summary(entries, range_start, range_end)
+    checked_count = sum(1 for item in grocery_items if item["is_checked"]) + manual_grocery_items.filter(
+        is_checked=True
+    ).count()
+
+    context = {
+        "grocery_form": grocery_form,
+        "grocery_items": grocery_items,
+        "manual_grocery_items": manual_grocery_items,
+        "grocery_count": len(grocery_items) + manual_grocery_items.count(),
+        "checked_count": checked_count,
+        "range_start": range_start,
+        "range_end": range_end,
+        "previous_start": previous_start,
+        "previous_end": previous_end,
+        "next_start": next_start,
+        "next_end": next_end,
+    }
+    return render(request, "planner/grocery.html", context)
+
+
 def dishes_page(request):
     dish_form = DishForm(prefix="dish")
     dish_item_form = DishIngredientForm(prefix="dish-item")

@@ -119,6 +119,12 @@
                     <h2><span class="title-icon">✓</span> Lista del super</h2>
                     <span>{{ grocery_count }} items</span>
                 </div>
+                <a
+                    class="panel-cta"
+                    href="/super/?start={{ range_start|date:'Y-m-d' }}&end={{ range_end|date:'Y-m-d' }}"
+                >
+                    Abrir modo super ↗
+                </a>
                 <p class="muted panel-copy">Podes editar cantidades para este rango sin tocar el plato original.</p>
                 <ul class="grocery-list">
                     {% for item in grocery_items %}

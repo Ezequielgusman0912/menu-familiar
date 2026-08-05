@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lista del super</title>
+    <link rel="stylesheet" href="/static/planner/style.css">
+</head>
+<body>
+    <main class="grocery-standalone">
+        <div class="grocery-standalone-header">
+            <div>
+                <p class="eyebrow">Lista del super</p>
+                <h1>{{ range_start|date:"d/m" }} al {{ range_end|date:"d/m" }}</h1>
+            </div>
+            <a class="ghost-button" href="/">Volver al plan</a>
+        </div>
+
+        {% if messages %}
+            <section class="messages">
+                {% for message in messages %}
+                    <div class="message">{{ message }}</div>
+                {% endfor %}
+            </section>
+        {% endif %}
+
+        <nav class="grocery-standalone-nav">
+            <a href="/super/?start={{ previous_start|date:'Y-m-d' }}&end={{ previous_end|date:'Y-m-d' }}">‹ Semana anterior</a>
+            <a href="/super/?start={{ next_start|date:'Y-m-d' }}&end={{ next_end|date:'Y-m-d' }}">Semana siguiente ›</a>
+        </nav>
+
+        <section class="panel">
+            <div class="grocery-progress">{{ checked_count }} de {{ grocery_count }} tildados</div>
+
+            <ul class="grocery-list grocery-list-big">
+                {% for item in grocery_items %}
+                    <li>
+                        <form method="post" class="check-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle_planned_item">
+                            <input type="hidden" name="ingredient_id" value="{{ item.id }}">
+                            <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
+                            <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
+                                {% if item.is_checked %}&#10003;{% endif %}
+                            </button>
+                        </form>
+                        <div class="grocery-main">
+                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
+                            <span class="grocery-qty">{{ item.quantity }} {{ item.unit_label }}</span>
+                        </div>
+                    </li>
+                {% endfor %}
+                {% for item in manual_grocery_items %}
+                    <li>
+                        <form method="post" class="check-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="toggle_manual_item">
+                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                            <input type="hidden" name="is_checked" value="{% if item.is_checked %}false{% else %}true{% endif %}">
+                            <button type="submit" class="checkbox-button {% if item.is_checked %}is-checked{% endif %}" aria-label="Marcar {{ item.name }}">
+                                {% if item.is_checked %}&#10003;{% endif %}
+                            </button>
+                        </form>
+                        <div class="grocery-main">
+                            <span class="{% if item.is_checked %}checked-text{% endif %}">{{ item.name }}</span>
+                            <span class="grocery-qty">{{ item.quantity }}</span>
+                        </div>
+                    </li>
+                {% endfor %}
+                {% if not grocery_items and not manual_grocery_items %}
+                    <li class="muted">Todavia no hay ingredientes para esta semana.</li>
+                {% endif %}
+            </ul>
+
+            <form method="post" class="form-grid compact-form grocery-add-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_grocery_item">
+                {{ grocery_form.as_p }}
+                <button type="submit">Agregar articulo</button>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
