@@ -84,10 +84,12 @@
                         <button type="submit">Guardar comida</button>
                     </form>
                 </section>
+            </div>
 
+            <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Buscar comidas</h2>
+                        <h2>Buscar y editar comida</h2>
                         <span>{{ dish_count }} cargadas</span>
                     </div>
 
@@ -97,10 +99,10 @@
                             name="dish_q"
                             value="{{ dish_query }}"
                             list="dish-options"
-                            placeholder="Filtrar comidas"
-                            aria-label="Filtrar comidas"
+                            placeholder="Buscar una comida para editarla"
+                            aria-label="Buscar una comida para editarla"
                         >
-                        <button type="submit" class="ghost-button">Filtrar</button>
+                        <button type="submit" class="ghost-button">Buscar</button>
                     </form>
 
                     {% if dish_query %}
@@ -116,21 +118,10 @@
                                 <p class="muted">Sin resultados para ese filtro.</p>
                             {% endfor %}
                         </div>
-                    {% else %}
-                        <p class="muted">Usa el filtro para traer comidas.</p>
                     {% endif %}
-                </section>
-            </div>
-
-            <div class="dishes-column">
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2>Editor de comida</h2>
-                        {% if selected_dish %}<span>{{ selected_dish.name }}</span>{% endif %}
-                    </div>
 
                     {% if selected_dish and selected_form %}
-                        <article class="dish-editor">
+                        <article class="dish-editor{% if dish_query %} dish-editor-divider{% endif %}">
                             <form method="post" class="form-grid">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="update_dish">
@@ -228,10 +219,10 @@
                                 <button type="submit" class="danger-button">Eliminar comida</button>
                             </form>
                         </article>
-                    {% else %}
-                        <p class="muted">
-                            Filtra y elegi una comida desde el listado para abrir el editor.
-                        </p>
+                    {% elif dish_query and dishes %}
+                        <p class="muted">Elegi una comida del listado de arriba para editarla.</p>
+                    {% elif not dish_query %}
+                        <p class="muted">Busca una comida por nombre para editarla.</p>
                     {% endif %}
                 </section>
             </div>

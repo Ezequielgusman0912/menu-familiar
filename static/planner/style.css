@@ -570,6 +570,10 @@ textarea::placeholder {
     background: rgba(7, 17, 31, 0.72);
 }
 
+.dish-editor-divider {
+    margin-top: 1.25rem;
+}
+
 .item-chip-list {
     display: flex;
     flex-wrap: wrap;
