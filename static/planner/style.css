@@ -173,8 +173,33 @@ body {
     grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.hero-solo {
-    grid-template-columns: 1fr;
+.hero-media {
+    position: relative;
+    align-self: stretch;
+    min-height: 12rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.hero-media img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    -webkit-mask-image: radial-gradient(ellipse 75% 75% at center, #000 45%, transparent 92%);
+    mask-image: radial-gradient(ellipse 75% 75% at center, #000 45%, transparent 92%);
+    opacity: 0.9;
+}
+
+.hero-media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(135deg, rgba(17, 37, 62, 0.35), rgba(8, 19, 34, 0.6)),
+        radial-gradient(circle at center, transparent 35%, rgba(8, 19, 34, 0.95) 88%);
+    box-shadow: inset 0 0 4rem 1.5rem rgba(8, 19, 34, 0.9);
+    pointer-events: none;
 }
 
 .hero-compact h1 {
