@@ -44,9 +44,12 @@
                     </form>
                 </section>
 
+            </div>
+
+            <div class="dishes-column">
                 <section class="panel">
                     <div class="panel-header">
-                        <h2>Buscar items</h2>
+                        <h2>Buscar y editar item</h2>
                         <span>{{ ingredient_count }} cargados</span>
                     </div>
 
@@ -56,10 +59,10 @@
                             name="item_q"
                             value="{{ item_query }}"
                             list="ingredient-options"
-                            placeholder="Filtrar items"
-                            aria-label="Filtrar items"
+                            placeholder="Buscar un item para editarlo"
+                            aria-label="Buscar un item para editarlo"
                         >
-                        <button type="submit" class="ghost-button">Filtrar</button>
+                        <button type="submit" class="ghost-button">Buscar</button>
                     </form>
 
                     {% if item_query %}
@@ -75,25 +78,15 @@
                                 <p class="muted">Sin resultados para ese filtro.</p>
                             {% endfor %}
                         </div>
-                    {% else %}
-                        <p class="muted">Usa el filtro para traer items.</p>
                     {% endif %}
-                </section>
-            </div>
-
-            <div class="dishes-column">
-                <section class="panel">
-                    <div class="panel-header">
-                        <h2>Editor de item</h2>
-                        {% if selected_ingredient %}<span>{{ selected_ingredient.name }}</span>{% endif %}
-                    </div>
 
                     {% if selected_ingredient and selected_ingredient_form %}
-                        <article class="inline-editor">
+                        <article class="inline-editor{% if item_query %} editor-divider{% endif %}">
                             <form method="post" class="form-grid">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="update_ingredient">
                                 <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                                <input type="hidden" name="item_q" value="{{ item_query }}">
                                 {{ selected_ingredient_form.as_p }}
                                 <button type="submit">Guardar cambios</button>
                             </form>
@@ -101,13 +94,14 @@
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="delete_ingredient">
                                 <input type="hidden" name="ingredient_id" value="{{ selected_ingredient.id }}">
+                                <input type="hidden" name="item_q" value="{{ item_query }}">
                                 <button type="submit" class="danger-button">Eliminar item</button>
                             </form>
                         </article>
-                    {% else %}
-                        <p class="muted">
-                            Filtra y elegi un item desde el listado para abrir el editor.
-                        </p>
+                    {% elif item_query and ingredients %}
+                        <p class="muted">Elegi un item del listado de arriba para editarlo.</p>
+                    {% elif not item_query %}
+                        <p class="muted">Busca un item por nombre para editarlo.</p>
                     {% endif %}
                 </section>
             </div>

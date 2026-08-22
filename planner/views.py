@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.db.models import ProtectedError
@@ -551,6 +552,16 @@ def dishes_page(request):
     return render(request, "planner/dishes.html", context)
 
 
+def _food_items_url(edit_item=None, item_q=""):
+    params = {}
+    if edit_item:
+        params["edit_item"] = edit_item
+    if item_q:
+        params["item_q"] = item_q
+    query = urlencode(params)
+    return f"{reverse('food_items')}?{query}" if query else reverse("food_items")
+
+
 def food_items_page(request):
     ingredient_form = IngredientForm(prefix="ingredient")
     item_query = request.GET.get("item_q", "").strip()
@@ -558,12 +569,13 @@ def food_items_page(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
+        post_item_q = request.POST.get("item_q", "").strip()
         if action == "add_ingredient":
             ingredient_form = IngredientForm(request.POST, prefix="ingredient")
             if ingredient_form.is_valid():
                 ingredient = ingredient_form.save()
                 messages.success(request, "Item guardado.")
-                return redirect(f"{reverse('food_items')}?edit_item={ingredient.id}")
+                return redirect(_food_items_url(edit_item=ingredient.id))
         elif action == "update_ingredient":
             ingredient_id = request.POST.get("ingredient_id")
             ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
@@ -573,7 +585,7 @@ def food_items_page(request):
             if ingredient and edit_item_form.is_valid():
                 edit_item_form.save()
                 messages.success(request, "Item actualizado.")
-                return redirect(f"{reverse('food_items')}?edit_item={ingredient.id}")
+                return redirect(_food_items_url(edit_item=ingredient.id, item_q=post_item_q))
         elif action == "delete_ingredient":
             ingredient_id = request.POST.get("ingredient_id")
             ingredient = Ingredient.objects.filter(pk=ingredient_id).first()
@@ -581,12 +593,15 @@ def food_items_page(request):
                 try:
                     ingredient.delete()
                     messages.success(request, "Item eliminado.")
+                    return redirect(_food_items_url(item_q=post_item_q))
                 except ProtectedError:
                     messages.error(
                         request,
-                        "No se puede eliminar un item que esta usado en un plato.",
+                        "No se puede eliminar: este item esta usado en una comida. "
+                        "Quitalo de esa comida primero.",
                     )
-            return redirect("food_items")
+                    return redirect(_food_items_url(edit_item=ingredient_id, item_q=post_item_q))
+            return redirect(_food_items_url(item_q=post_item_q))
 
     ingredients = []
     if item_query:

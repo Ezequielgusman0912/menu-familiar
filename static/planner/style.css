@@ -650,7 +650,7 @@ textarea::placeholder {
     background: rgba(7, 17, 31, 0.72);
 }
 
-.dish-editor-divider {
+.editor-divider {
     margin-top: 1.25rem;
 }
 

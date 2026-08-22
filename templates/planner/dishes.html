@@ -121,7 +121,7 @@
                     {% endif %}
 
                     {% if selected_dish and selected_form %}
-                        <article class="dish-editor{% if dish_query %} dish-editor-divider{% endif %}">
+                        <article class="dish-editor{% if dish_query %} editor-divider{% endif %}">
                             <form method="post" class="form-grid">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="update_dish">
